@@ -3,3 +3,4 @@
 .project
 .kafka-tool
 target
+KafkaTool.cmd

@@ -8,6 +8,9 @@ import java.util.Optional;
 
 import io.vepo.kt.KafkaAdminService.BrokerStatus;
 import io.vepo.kt.KafkaAdminService.KafkaConnectionWatcher;
+import io.vepo.kt.settings.KafkaSettings;
+import io.vepo.kt.settings.UiSettings;
+import io.vepo.kt.settings.WindowSettings;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -57,7 +60,7 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
         var boostrapServer = bootstrapField.textProperty().get().trim();
         adminService.connect(boostrapServer, status -> {
             if (status == BrokerStatus.CONNECTED) {
-                Settings.readAndUpdate(settings -> {
+                KafkaSettings.readAndUpdate(settings -> {
                     settings.setBootStrapServers(boostrapServer);
                     settings.setSchemaRegistryUrl(Optional.ofNullable(schemaRegistryUrlField.textProperty()
                                                                                             .get())
@@ -90,11 +93,8 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
 
         var btn = new Button(label);
         btn.setOnAction(e -> callback.run());
-        btn.setMinWidth(256);
-        GridPane.setFillWidth(btn, true);
+        GridPane.setHgrow(btn, Priority.ALWAYS);
         grid.add(btn, 1, row);
-        grid.widthProperty()
-            .addListener((obs, oldValue, newValue) -> btn.setPrefWidth(grid.getCellBounds(1, row).getWidth()));
         return btn;
     }
 
@@ -121,14 +121,45 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
         setColumnSpan(topicsView, 2);
         setVgrow(topicsView, Priority.ALWAYS);
 
-        Settings currentSettings = Settings.getInstance();
+        var btnRefreshTopics = new Button("Refresh");
+        btnRefreshTopics.setOnAction(e -> topicsView.update());
+        grid.add(btnRefreshTopics, 0, 4);
+        setColumnSpan(btnRefreshTopics, 2);
+        
+        KafkaSettings currentSettings = KafkaSettings.getInstance();
         this.bootstrapField.textProperty().set(currentSettings.getBootStrapServers());
         this.schemaRegistryUrlField.textProperty().set(currentSettings.getSchemaRegistryUrl());
         updateButton();
-        Scene scene = new Scene(grid);
+
+        Scene scene = Optional.ofNullable(UiSettings.getInstance()
+                                                    .getMainWindow())
+                              .map(window -> new Scene(grid, window.getWidth(), window.getHeight()))
+                              .orElseGet(() -> new Scene(grid));
+
         stage.setScene(scene);
         stage.getIcons().add(new Image(KafkaTool.class.getResourceAsStream("/kafka.png")));
-        stage.widthProperty().addListener((obs, oldValue, newValue) -> topicsView.setPrefWidth(newValue.doubleValue()));
+        stage.widthProperty().addListener((obs, oldValue, newValue) -> {
+            topicsView.setPrefWidth(newValue.doubleValue());
+            btnClusterConnect.setPrefWidth(grid.getCellBounds(1, 2).getWidth());
+            btnRefreshTopics.setPrefWidth(newValue.doubleValue());
+            UiSettings.readAndUpdate(settings -> Optional.ofNullable(settings.getMainWindow())
+                                                         .orElseGet(() -> {
+                                                             var mainWindow = new WindowSettings();
+                                                             settings.setMainWindow(mainWindow);
+                                                             return mainWindow;
+                                                         })
+                                                         .setWidth(newValue.intValue()));
+        });
+        stage.heightProperty()
+             .addListener((obs, oldValue,
+                     newValue) -> UiSettings.readAndUpdate(settings -> Optional.ofNullable(settings.getMainWindow())
+                                                                               .orElseGet(() -> {
+                                                                                   var mainWindow =
+                                                                                           new WindowSettings();
+                                                                                   settings.setMainWindow(mainWindow);
+                                                                                   return mainWindow;
+                                                                               })
+                                                                               .setHeight(newValue.intValue())));
         stage.show();
     }
 

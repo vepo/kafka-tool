@@ -1,9 +1,12 @@
 package io.vepo.kt;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
+import static org.apache.kafka.clients.admin.RecordsToDelete.beforeOffset;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -13,11 +16,18 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.OffsetSpec;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KafkaAdminService implements Closeable {
+    private static final Logger logger = LoggerFactory.getLogger(KafkaAdminService.class);
+
     public enum BrokerStatus {
         IDLE, CONNECTED
     }
@@ -100,22 +110,69 @@ public class KafkaAdminService implements Closeable {
         this.watchers.add(watcher);
     }
 
+    public void emptyTopic(TopicInfo topic) {
+        executor.submit(() -> {
+            logger.info("Cleaning topic... topic={}", topic);
+            if (nonNull(adminClient)) {
+                logger.info("Describing topic... topic={}", topic);
+
+                adminClient.describeTopics(asList(topic.getName()))
+                           .all()
+                           .whenComplete((descs, describeTopicsError) -> {
+                               if (isNull(describeTopicsError)) {
+                                   adminClient.listOffsets(descs.values()
+                                                                .stream()
+                                                                .flatMap(desc -> desc.partitions()
+                                                                                     .stream()
+                                                                                     .map(partition -> new TopicPartition(desc.name(),
+                                                                                                                          partition.partition())))
+                                                                .collect(Collectors.toMap((TopicPartition t) -> t,
+                                                                                          t -> OffsetSpec.latest())))
+                                              .all()
+                                              .whenComplete((listOffsetResults, listOffsetErros) -> {
+                                                  if (isNull(listOffsetErros)) {
+                                                      adminClient.deleteRecords(listOffsetResults.entrySet()
+                                                                                                 .stream()
+                                                                                                 .collect(toMap(entry -> entry.getKey(),
+                                                                                                                entry -> beforeOffset(entry.getValue()
+                                                                                                                                           .offset()))))
+                                                                 .all()
+                                                                 .whenComplete((__, deleteRecordsError) -> {
+                                                                     if (nonNull(deleteRecordsError)) {
+                                                                         logger.error("Error deleting records!",
+                                                                                      describeTopicsError);
+                                                                     }
+                                                                 });
+                                                  } else {
+                                                      logger.error("Could not list offset!", listOffsetErros);
+                                                  }
+                                              });
+                               } else {
+                                   logger.error("Error describing topic!", describeTopicsError);
+                               }
+                           });
+            }
+        });
+    }
+
     public void listTopics(Consumer<List<TopicInfo>> callback) {
-        if (nonNull(adminClient)) {
-            adminClient.listTopics()
-                       .listings()
-                       .whenComplete((topics, error) -> {
-                           if (isNull(error)) {
-                               callback.accept(topics.stream()
-                                                     .map(topic -> new TopicInfo(topic.name(), topic.isInternal()))
-                                                     .collect(toList()));
-                           } else {
-                               callback.accept(emptyList());
-                           }
-                       });
-        } else {
-            callback.accept(emptyList());
-        }
+        executor.submit(() -> {
+            if (nonNull(adminClient)) {
+                adminClient.listTopics()
+                           .listings()
+                           .whenComplete((topics, error) -> {
+                               if (isNull(error)) {
+                                   callback.accept(topics.stream()
+                                                         .map(topic -> new TopicInfo(topic.name(), topic.isInternal()))
+                                                         .collect(toList()));
+                               } else {
+                                   callback.accept(emptyList());
+                               }
+                           });
+            } else {
+                callback.accept(emptyList());
+            }
+        });
     }
 
     @Override

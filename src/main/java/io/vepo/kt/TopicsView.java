@@ -1,14 +1,20 @@
 package io.vepo.kt;
 
 import static io.vepo.kt.UiConstants.PADDING;
+import static javafx.application.Platform.runLater;
 
 import io.vepo.kt.KafkaAdminService.BrokerStatus;
 import io.vepo.kt.KafkaAdminService.KafkaConnectionWatcher;
 import io.vepo.kt.KafkaAdminService.TopicInfo;
+import io.vepo.kt.settings.KafkaSettings;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -40,8 +46,8 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
         actionsColumn.setResizable(false);
         actionsColumn.setReorderable(false);
         actionsColumn.setCellFactory((column) -> new ActionButtonCell());
-        actionsColumn.setMinWidth((2 * PADDING) + 128);
-        actionsColumn.setPrefWidth((2 * PADDING) + 128);
+        actionsColumn.setMinWidth((3 * PADDING) + 192);
+        actionsColumn.setPrefWidth((3 * PADDING) + 192);
         getColumns().add(actionsColumn);
 
         DoubleProperty width = new SimpleDoubleProperty();
@@ -50,7 +56,6 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
             nameColumn.setPrefWidth(getWidth() - (2 * PADDING) - t1.doubleValue());
         });
 
-        nameColumn.setPrefWidth(getWidth() - (2 * PADDING) - width.doubleValue());
         nameColumn.setResizable(false);
 
         widthProperty().addListener((ov, t, t1) -> {
@@ -69,6 +74,23 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
             btnAlter.setMinWidth(64);
             box.getChildren().add(btnAlter);
 
+            var btnEmpty = new Button("Empty");
+            btnEmpty.setMinWidth(64);
+            btnEmpty.setOnAction(e -> {
+                var alert = new Alert(AlertType.CONFIRMATION, "All messages will be lost", ButtonType.OK,
+                                      ButtonType.CANCEL);
+                alert.setTitle("Do you really want to clear the topic?");
+                alert.show();
+                alert.resultProperty().addListener((obs, oldValue, newValue) -> {
+                    if (newValue == ButtonType.OK) {
+                        adminService.emptyTopic(getTableRow().itemProperty()
+                                                             .get());
+                    }
+                });
+
+            });
+            box.getChildren().add(btnEmpty);
+
             var btnSubscribe = new Button("Subscribe");
             btnSubscribe.setMinWidth(64);
             btnSubscribe.setOnAction(e -> {
@@ -76,8 +98,8 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
                                                                          .get()
                                                                          .getName(),
                                                             (Stage) getScene().getWindow(),
-                                                            Settings.getInstance()
-                                                                    .clone());
+                                                            KafkaSettings.getInstance()
+                                                                         .clone());
                 consumerStage.show();
             });
             box.getChildren().add(btnSubscribe);
@@ -98,12 +120,23 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
     public void statusChanged(BrokerStatus status) {
         switch (status) {
             case IDLE:
-                Platform.runLater(this.getItems()::clear);
+                clear();
             case CONNECTED:
-                this.adminService.listTopics(topics -> Platform.runLater(() -> this.getItems().addAll(topics)));
+                update();
             default:
                 break;
         }
+    }
+
+    public void clear() {
+        Platform.runLater(this.getItems()::clear);
+    }
+
+    public void update() {
+        this.adminService.listTopics(topics -> runLater(() -> {
+            this.getItems().clear();
+            this.getItems().addAll(topics);
+        }));
     }
 
 }
