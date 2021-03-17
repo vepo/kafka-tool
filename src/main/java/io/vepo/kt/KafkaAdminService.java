@@ -12,7 +12,6 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -86,7 +85,7 @@ public class KafkaAdminService implements Closeable {
     private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
                                    Consumer<Throwable> errorHandler) {
         operation.whenComplete((result, error) -> {
-            if (isNull(error)) {
+            if (nonNull(error)) {
                 errorHandler.accept(error);
             } else {
                 successHandler.accept(result);
