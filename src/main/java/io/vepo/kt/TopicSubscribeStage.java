@@ -47,51 +47,8 @@ import javafx.stage.Stage;
 
 public class TopicSubscribeStage extends Stage {
 
-    public static class Message {
-        private final String key;
-        private final String value;
 
-        public Message(String key, String value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            Message other = (Message) obj;
-            return Objects.equals(key, other.key) && Objects.equals(value, other.value);
-        }
-
-        public String getKey() {
-            return key;
-        }
-
-        public String getValue() {
-            return value;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(key, value);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Message [key=%s, value=%s]", key, value);
-        }
-
-    }
-
-    public class MessagesActionButtonCell extends TableCell<Message, Void> {
+    public class MessagesActionButtonCell extends TableCell<KafkaMessage, Void> {
         private HBox box;
 
         public MessagesActionButtonCell() {
@@ -99,13 +56,13 @@ public class TopicSubscribeStage extends Stage {
 
             var btnAlter = new Button("View");
             btnAlter.setMinWidth(64);
-            btnAlter.setOnAction(evnt -> {
-                Message message = getTableRow().itemProperty().get();
+            btnAlter.setOnAction(__ -> {
+                var message = getTableRow().itemProperty().get();
                 if (nonNull(message)) {
                     try {
-                        new MessageViewerStage(message.getKey(),
-                                               mapper.readTree(message.getValue()).toPrettyString(),
-                                               (Stage) getScene().getWindow()).show();
+                        new MessageViewerStage(message.key(),
+                                mapper.readTree(message.value()).toPrettyString(),
+                                (Stage) getScene().getWindow()).show();
                     } catch (JsonProcessingException e) {
                         logger.error("Could not format JSON!", e);
                     }
@@ -134,7 +91,7 @@ public class TopicSubscribeStage extends Stage {
     private Button btnStop;
     private ExecutorService consumerExecutor = newSingleThreadExecutor();
     private TopicConsumerStatusBar consumerStatusBar;
-    private TableView<Message> dataView;
+    private TableView<KafkaMessage> dataView;
     private ObjectMapper mapper = new ObjectMapper();
     private AtomicBoolean running = new AtomicBoolean(false);
     private KafkaSettings settings;
@@ -172,20 +129,20 @@ public class TopicSubscribeStage extends Stage {
         dataView = new TableView<>();
 
         dataView.setEditable(false);
-        var keyColumn = new TableColumn<Message, String>("Key");
-        keyColumn.setCellValueFactory(new PropertyValueFactory<Message, String>("key"));
+        var keyColumn = new TableColumn<KafkaMessage, String>("Key");
+        keyColumn.setCellValueFactory(new PropertyValueFactory<KafkaMessage, String>("key"));
         keyColumn.setResizable(false);
         keyColumn.setMaxWidth(128);
         keyColumn.setMinWidth(128);
         dataView.getColumns().add(keyColumn);
 
-        var valueColumn = new TableColumn<Message, String>("Message");
-        valueColumn.setCellValueFactory(new PropertyValueFactory<Message, String>("value"));
+        var valueColumn = new TableColumn<KafkaMessage, String>("Message");
+        valueColumn.setCellValueFactory(new PropertyValueFactory<KafkaMessage, String>("value"));
         valueColumn.setResizable(false);
         valueColumn.setReorderable(false);
         dataView.getColumns().add(valueColumn);
 
-        var actionsColumn = new TableColumn<Message, Void>("Actions");
+        var actionsColumn = new TableColumn<KafkaMessage, Void>("Actions");
         actionsColumn.setResizable(false);
         actionsColumn.setReorderable(false);
         actionsColumn.setCellFactory((column) -> new MessagesActionButtonCell());
@@ -209,8 +166,8 @@ public class TopicSubscribeStage extends Stage {
         btnMessagesClear.setOnAction(e -> clearMessages());
         messagesControllerBox.getChildren().add(btnMessagesClear);
         messagesControllerBox.widthProperty()
-                             .addListener((__, newValue,
-                                     oldValue) -> btnMessagesClear.setPrefWidth(newValue.doubleValue()));
+                .addListener((__, newValue,
+                              oldValue) -> btnMessagesClear.setPrefWidth(newValue.doubleValue()));
         grid.add(messagesControllerBox, 0, 2);
 
         consumerStatusBar = new TopicConsumerStatusBar(PADDING);
@@ -244,19 +201,19 @@ public class TopicSubscribeStage extends Stage {
         consumerStatusBar.status(Status.CONSUMING);
         consumerExecutor.submit(() -> {
             Properties configProperties = new Properties();
-            configProperties.put(BOOTSTRAP_SERVERS_CONFIG, settings.getBootStrapServers());
+            configProperties.put(BOOTSTRAP_SERVERS_CONFIG, settings.bootStrapServers());
             configProperties.put(GROUP_ID_CONFIG, "random-" + UUID.randomUUID().toString());
             configProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
             configProperties.put(VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
             configProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-            configProperties.put(SCHEMA_REGISTRY_URL_CONFIG, settings.getSchemaRegistryUrl());
+            configProperties.put(SCHEMA_REGISTRY_URL_CONFIG, settings.schemaRegistryUrl());
             try (KafkaConsumer<String, GenericData.Record> consumer = new KafkaConsumer<>(configProperties)) {
                 consumer.subscribe(asList(this.topic));
                 while (running.get()) {
                     consumer.poll(Duration.ofSeconds(1))
                             .forEach(record -> runLater(() -> {
                                 consumerStatusBar.offset(record.offset());
-                                dataView.getItems().add(new Message(record.key(), record.value().toString()));
+                                dataView.getItems().add(new KafkaMessage(record.key(), record.value().toString()));
                             }));
                     try {
                         Thread.sleep(500);

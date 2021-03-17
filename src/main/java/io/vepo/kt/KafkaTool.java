@@ -9,6 +9,7 @@ import java.util.Optional;
 import io.vepo.kt.KafkaAdminService.BrokerStatus;
 import io.vepo.kt.KafkaAdminService.KafkaConnectionWatcher;
 import io.vepo.kt.settings.KafkaSettings;
+import io.vepo.kt.settings.Settings;
 import io.vepo.kt.settings.UiSettings;
 import io.vepo.kt.settings.WindowSettings;
 import javafx.application.Application;
@@ -60,13 +61,13 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
         var boostrapServer = bootstrapField.textProperty().get().trim();
         adminService.connect(boostrapServer, status -> {
             if (status == BrokerStatus.CONNECTED) {
-                KafkaSettings.readAndUpdate(settings -> {
-                    settings.setBootStrapServers(boostrapServer);
-                    settings.setSchemaRegistryUrl(Optional.ofNullable(schemaRegistryUrlField.textProperty()
-                                                                                            .get())
-                                                          .orElse("")
-                                                          .trim());
-                });
+                var kafkaSettings = Settings.kafka();
+                kafkaSettings.bootStrapServers(boostrapServer);
+                kafkaSettings.schemaRegistryUrl(Optional.ofNullable(schemaRegistryUrlField.textProperty()
+                                                                                          .get())
+                                                        .orElse("")
+                                                        .trim());
+                kafkaSettings.save();
             }
             updateButton();
         });
@@ -125,16 +126,14 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
         btnRefreshTopics.setOnAction(e -> topicsView.update());
         grid.add(btnRefreshTopics, 0, 4);
         setColumnSpan(btnRefreshTopics, 2);
-        
-        KafkaSettings currentSettings = KafkaSettings.getInstance();
-        this.bootstrapField.textProperty().set(currentSettings.getBootStrapServers());
-        this.schemaRegistryUrlField.textProperty().set(currentSettings.getSchemaRegistryUrl());
+
+        var currentSettings = Settings.kafka();
+        this.bootstrapField.textProperty().set(currentSettings.bootStrapServers());
+        this.schemaRegistryUrlField.textProperty().set(currentSettings.schemaRegistryUrl());
         updateButton();
 
-        Scene scene = Optional.ofNullable(UiSettings.getInstance()
-                                                    .getMainWindow())
-                              .map(window -> new Scene(grid, window.getWidth(), window.getHeight()))
-                              .orElseGet(() -> new Scene(grid));
+        var mainWindows = Settings.ui().mainWindow();
+        var scene = new Scene(grid, mainWindows.width(), mainWindows.height());
 
         stage.setScene(scene);
         stage.getIcons().add(new Image(KafkaTool.class.getResourceAsStream("/kafka.png")));
@@ -142,24 +141,16 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
             topicsView.setPrefWidth(newValue.doubleValue());
             btnClusterConnect.setPrefWidth(grid.getCellBounds(1, 2).getWidth());
             btnRefreshTopics.setPrefWidth(newValue.doubleValue());
-            UiSettings.readAndUpdate(settings -> Optional.ofNullable(settings.getMainWindow())
-                                                         .orElseGet(() -> {
-                                                             var mainWindow = new WindowSettings();
-                                                             settings.setMainWindow(mainWindow);
-                                                             return mainWindow;
-                                                         })
-                                                         .setWidth(newValue.intValue()));
+
+            var uiSettings = Settings.ui();
+            uiSettings.mainWindow().width(newValue.intValue());
+            uiSettings.save();
         });
-        stage.heightProperty()
-             .addListener((obs, oldValue,
-                     newValue) -> UiSettings.readAndUpdate(settings -> Optional.ofNullable(settings.getMainWindow())
-                                                                               .orElseGet(() -> {
-                                                                                   var mainWindow =
-                                                                                           new WindowSettings();
-                                                                                   settings.setMainWindow(mainWindow);
-                                                                                   return mainWindow;
-                                                                               })
-                                                                               .setHeight(newValue.intValue())));
+        stage.heightProperty().addListener((obs, oldValue, newValue) -> {
+            var uiSettings = Settings.ui();
+            uiSettings.mainWindow().height(newValue.intValue());
+            uiSettings.save();
+        });
         stage.show();
     }
 
@@ -169,6 +160,7 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
 
     @Override
     public void stop() throws Exception {
+        this.adminService.close();
     }
 
     @Override

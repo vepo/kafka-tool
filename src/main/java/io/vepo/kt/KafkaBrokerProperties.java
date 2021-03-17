@@ -59,7 +59,7 @@ public class KafkaBrokerProperties implements Serializable {
     @Override
     public String toString() {
         return String.format("KafkaBrokerProperties [bootStrapServers=%s, schemaRegistryUrl=%s, topic=%s]",
-                             bootStrapServers, schemaRegistryUrl, topic);
+                bootStrapServers, schemaRegistryUrl, topic);
     }
 
 }

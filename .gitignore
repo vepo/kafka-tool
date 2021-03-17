@@ -1,6 +1,8 @@
 .classpath
 .settings
 .project
+.idea
+kafka-tool.iml
 .kafka-tool
 target
 KafkaTool.cmd

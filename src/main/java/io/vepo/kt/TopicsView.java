@@ -5,8 +5,8 @@ import static javafx.application.Platform.runLater;
 
 import io.vepo.kt.KafkaAdminService.BrokerStatus;
 import io.vepo.kt.KafkaAdminService.KafkaConnectionWatcher;
-import io.vepo.kt.KafkaAdminService.TopicInfo;
 import io.vepo.kt.settings.KafkaSettings;
+import io.vepo.kt.settings.Settings;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -77,7 +77,7 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
             btnEmpty.setMinWidth(64);
             btnEmpty.setOnAction(e -> {
                 var alert = new Alert(AlertType.CONFIRMATION, "All messages will be lost", ButtonType.OK,
-                                      ButtonType.CANCEL);
+                        ButtonType.CANCEL);
                 alert.setTitle("Do you really want to clear the topic?");
                 alert.show();
                 alert.resultProperty().addListener((obs, oldValue, newValue) -> {
@@ -95,10 +95,10 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
             btnSubscribe.setOnAction(e -> {
                 var consumerStage = new TopicSubscribeStage(getTableRow().itemProperty()
                                                                          .get()
-                                                                         .getName(),
-                                                            (Stage) getScene().getWindow(),
-                                                            KafkaSettings.getInstance()
-                                                                         .clone());
+                                                                         .name(),
+                        (Stage) getScene().getWindow(),
+                        Settings.kafka()
+                                .clone());
                 consumerStage.show();
             });
             box.getChildren().add(btnSubscribe);

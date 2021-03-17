@@ -1,60 +1,64 @@
 package io.vepo.kt.settings;
 
-import static java.util.Objects.isNull;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import java.util.StringJoiner;
 
-public class KafkaSettings extends AbstractSettings {
-    private static final String KAFKA_SETTINGS_FILE = "kafka-properties.json";
-    private static final AtomicReference<KafkaSettings> INSTANCE = new AtomicReference<KafkaSettings>();
-
-    public static KafkaSettings getInstance() {
-        return INSTANCE.updateAndGet(settings -> {
-            if (isNull(settings)) {
-                settings = loadProperties(KafkaSettings.class, KAFKA_SETTINGS_FILE).orElseGet(KafkaSettings::new);
-            }
-            return settings;
-        });
-    }
-
-    public static void readAndUpdate(Consumer<KafkaSettings> consumer) {
-        var instance = loadProperties(KafkaSettings.class, KAFKA_SETTINGS_FILE).orElseGet(KafkaSettings::new);
-        consumer.accept(instance);
-        instance.saveProperties();
-    }
-
+public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
+    static final String KAFKA_SETTINGS_FILE = "kafka-properties.json";
+    @JsonProperty("bootStrapServers")
     private String bootStrapServers;
+    @JsonProperty("schemaRegistryUrl")
     private String schemaRegistryUrl;
+    @JsonProperty("topic")
     private String topic;
 
     public KafkaSettings() {
-        super(KAFKA_SETTINGS_FILE);
     }
 
-    public String getBootStrapServers() {
+    public KafkaSettings(String bootStrapServers, String schemaRegistryUrl, String topic) {
+        this.bootStrapServers = bootStrapServers;
+        this.schemaRegistryUrl = schemaRegistryUrl;
+        this.topic = topic;
+    }
+
+    public String bootStrapServers() {
         return bootStrapServers;
     }
 
-    public void setBootStrapServers(String bootStrapServers) {
+    public void bootStrapServers(String bootStrapServers) {
         this.bootStrapServers = bootStrapServers;
     }
 
-    public String getSchemaRegistryUrl() {
+
+    public String schemaRegistryUrl() {
         return schemaRegistryUrl;
     }
 
-    public void setSchemaRegistryUrl(String schemaRegistryUrl) {
+    public void schemaRegistryUrl(String schemaRegistryUrl) {
         this.schemaRegistryUrl = schemaRegistryUrl;
     }
 
-    public String getTopic() {
+    public String topic() {
         return topic;
     }
 
-    public void setTopic(String topic) {
+    public void topic(String topic) {
         this.topic = topic;
+    }
+
+    @Override
+    public void save() {
+        Settings.save(KAFKA_SETTINGS_FILE, this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        KafkaSettings that = (KafkaSettings) o;
+        return Objects.equals(bootStrapServers, that.bootStrapServers) && Objects.equals(schemaRegistryUrl, that.schemaRegistryUrl) && Objects.equals(topic, that.topic);
     }
 
     @Override
@@ -63,30 +67,20 @@ public class KafkaSettings extends AbstractSettings {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        KafkaSettings other = (KafkaSettings) obj;
-        return Objects.equals(bootStrapServers, other.bootStrapServers)
-                && Objects.equals(schemaRegistryUrl, other.schemaRegistryUrl) && Objects.equals(topic, other.topic);
-    }
-
-    @Override
     public String toString() {
-        return String.format("Settings [bootStrapServers=%s, schemaRegistryUrl=%s, topic=%s]", bootStrapServers,
-                             schemaRegistryUrl, topic);
+        return new StringJoiner(", ", KafkaSettings.class.getSimpleName() + "[", "]")
+                .add("bootStrapServers='" + bootStrapServers + "'")
+                .add("schemaRegistryUrl='" + schemaRegistryUrl + "'")
+                .add("topic='" + topic + "'")
+                .toString();
     }
 
     @Override
     public KafkaSettings clone() {
-        return (KafkaSettings) super.clone();
+        try {
+            return (KafkaSettings) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
     }
-
 }

@@ -1,50 +1,60 @@
 package io.vepo.kt.settings;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public class WindowSettings {
+    @JsonProperty("width")
     private int width;
+    @JsonProperty("height")
     private int height;
 
-    public int getWidth() {
-        return width;
+    public WindowSettings() {
     }
 
-    public void setWidth(int width) {
+    public WindowSettings(int width, int height) {
         this.width = width;
+        this.height = height;
     }
 
-    public int getHeight() {
+
+    public int height() {
         return height;
     }
 
-    public void setHeight(int height) {
+    public void height(int height) {
         this.height = height;
+    }
+
+    public int width() {
+        return width;
+    }
+
+    public void width(int width) {
+        this.width = width;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        WindowSettings that = (WindowSettings) o;
+        return width == that.width && height == that.height;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(height, width);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        WindowSettings other = (WindowSettings) obj;
-        return height == other.height && width == other.width;
+        return Objects.hash(width, height);
     }
 
     @Override
     public String toString() {
-        return String.format("WindowSettings [width=%s, height=%s]", width, height);
+        return new StringJoiner(", ", WindowSettings.class.getSimpleName() + "[", "]")
+                .add("width=" + width)
+                .add("height=" + height)
+                .toString();
     }
-
 }

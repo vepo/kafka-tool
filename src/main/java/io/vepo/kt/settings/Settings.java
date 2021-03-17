@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,18 +19,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.vepo.kt.KafkaTool;
 
-public abstract class AbstractSettings implements Cloneable {
-    private static final Logger logger = LoggerFactory.getLogger(KafkaTool.class);
-    private static final String KAFKA_TOOL_FOLDER = ".kafka-tool";
-    private static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
+public interface Settings<T extends Settings> {
+    static final Logger logger = LoggerFactory.getLogger(KafkaTool.class);
+    static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
+    static final String KAFKA_TOOL_FOLDER = ".kafka-tool";
 
-    private transient String filename;
-
-    public AbstractSettings(String filename) {
-        this.filename = filename;
+    public static UiSettings ui() {
+        return loadProperties(UiSettings.class, UiSettings.UI_SETTINGS_FILE)
+                .orElseGet(() -> new UiSettings(new WindowSettings(512, 512)));
     }
 
-    void saveProperties() {
+    public static KafkaSettings kafka() {
+        return loadProperties(KafkaSettings.class, KafkaSettings.KAFKA_SETTINGS_FILE)
+                .orElseGet(() -> new KafkaSettings("", "", ""));
+    }
+
+    public void save();
+
+    static <T extends Settings<?>> void save(String filename, T settings) {
 
         var propertiesFolder = Paths.get(KAFKA_TOOL_FOLDER);
         if (!propertiesFolder.toFile().exists()) {
@@ -37,14 +44,14 @@ public abstract class AbstractSettings implements Cloneable {
         }
 
         Path propertiesPath = propertiesFolder.resolve(filename);
-        try (var writter = Files.newBufferedWriter(propertiesPath, CREATE, TRUNCATE_EXISTING)) {
-            writter.write(mapper.writeValueAsString(this));
+        try (var writer = Files.newBufferedWriter(propertiesPath, CREATE, TRUNCATE_EXISTING)) {
+            writer.write(mapper.writeValueAsString(settings));
         } catch (IOException e) {
             logger.error("Error saving file!", e);
         }
     }
 
-    static <T extends AbstractSettings> Optional<T> loadProperties(Class<T> clz, String filename) {
+    static <T> Optional<T> loadProperties(Class<T> clz, String filename) {
         var propertiesFolder = Paths.get(KAFKA_TOOL_FOLDER);
         if (!propertiesFolder.toFile().exists()) {
             propertiesFolder.toFile().mkdir();
@@ -59,15 +66,6 @@ public abstract class AbstractSettings implements Cloneable {
             }
         }
         return Optional.empty();
-    }
-    
-    @Override
-    public AbstractSettings clone() {
-        try {
-            return (AbstractSettings) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new IllegalStateException("Cannot clone object");
-        }
     }
 
 }
