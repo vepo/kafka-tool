@@ -12,7 +12,6 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,7 +35,6 @@ public class KafkaAdminService implements Closeable {
         IDLE, CONNECTED
     }
 
-
     public interface KafkaConnectionWatcher {
 
         public void statusChanged(BrokerStatus status);
@@ -58,7 +56,7 @@ public class KafkaAdminService implements Closeable {
 
     public void connect(String boostraServer, Consumer<BrokerStatus> callback) {
         executor.submit(() -> {
-            var properties = new Properties();
+            Properties properties = new Properties();
             properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, boostraServer);
             adminClient = AdminClient.create(properties);
             status = BrokerStatus.CONNECTED;
@@ -76,15 +74,15 @@ public class KafkaAdminService implements Closeable {
             logger.info("Cleaning topic... topic={}", topic);
             if (nonNull(adminClient)) {
                 logger.info("Describing topic... topic={}", topic);
-                handle(adminClient.describeTopics(asList(topic.name())).all(),
-                        this::listOffsets,
-                        error -> logger.error("Error describing topic!", error));
+                handle(adminClient.describeTopics(asList(topic.getName())).all(),
+                       this::listOffsets,
+                       error -> logger.error("Error describing topic!", error));
             }
         });
     }
 
     private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
-                                   Consumer<Throwable> errorHandler) {
+            Consumer<Throwable> errorHandler) {
         operation.whenComplete((result, error) -> {
             if (isNull(error)) {
                 errorHandler.accept(error);
@@ -96,27 +94,27 @@ public class KafkaAdminService implements Closeable {
 
     private void listOffsets(Map<String, TopicDescription> descs) {
         handle(adminClient.listOffsets(descs.values()
-                        .stream()
-                        .flatMap(desc -> desc.partitions()
-                                .stream()
-                                .map(partition -> new TopicPartition(desc.name(),
-                                        partition.partition())))
-                        .collect(Collectors.toMap((TopicPartition t) -> t,
-                                t -> OffsetSpec.latest())))
-                        .all(),
-                this::deleteRecords,
-                error -> logger.error("Could not list offset!", error));
+                                            .stream()
+                                            .flatMap(desc -> desc.partitions()
+                                                                 .stream()
+                                                                 .map(partition -> new TopicPartition(desc.name(),
+                                                                                                      partition.partition())))
+                                            .collect(Collectors.toMap((TopicPartition t) -> t,
+                                                                      t -> OffsetSpec.latest())))
+                          .all(),
+               this::deleteRecords,
+               error -> logger.error("Could not list offset!", error));
     }
 
     private void deleteRecords(Map<TopicPartition, ListOffsetsResultInfo> listOffsetResults) {
         handle(adminClient.deleteRecords(listOffsetResults.entrySet()
-                        .stream()
-                        .collect(toMap(entry -> entry.getKey(),
-                                entry -> beforeOffset(entry.getValue()
-                                        .offset()))))
-                        .all(),
-                KafkaAdminService::ignore,
-                error -> logger.error("Error deleting records!", error));
+                                                          .stream()
+                                                          .collect(toMap(entry -> entry.getKey(),
+                                                                         entry -> beforeOffset(entry.getValue()
+                                                                                                    .offset()))))
+                          .all(),
+               KafkaAdminService::ignore,
+               error -> logger.error("Error deleting records!", error));
     }
 
     private static <T> void ignore(T value) {
@@ -127,16 +125,16 @@ public class KafkaAdminService implements Closeable {
         executor.submit(() -> {
             if (nonNull(adminClient)) {
                 adminClient.listTopics()
-                        .listings()
-                        .whenComplete((topics, error) -> {
-                            if (isNull(error)) {
-                                callback.accept(topics.stream()
-                                        .map(topic -> new TopicInfo(topic.name(), topic.isInternal()))
-                                        .collect(toList()));
-                            } else {
-                                callback.accept(emptyList());
-                            }
-                        });
+                           .listings()
+                           .whenComplete((topics, error) -> {
+                               if (isNull(error)) {
+                                   callback.accept(topics.stream()
+                                                         .map(topic -> new TopicInfo(topic.name(), topic.isInternal()))
+                                                         .collect(toList()));
+                               } else {
+                                   callback.accept(emptyList());
+                               }
+                           });
             } else {
                 callback.accept(emptyList());
             }

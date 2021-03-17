@@ -1,51 +1,25 @@
 package io.vepo.kt.settings;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.util.List;
 import java.util.Objects;
-import java.util.StringJoiner;
 
 public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
     static final String KAFKA_SETTINGS_FILE = "kafka-properties.json";
-    @JsonProperty("bootStrapServers")
-    private String bootStrapServers;
-    @JsonProperty("schemaRegistryUrl")
-    private String schemaRegistryUrl;
-    @JsonProperty("topic")
-    private String topic;
+    private List<KafkaBroker> brokers;
 
     public KafkaSettings() {
     }
 
-    public KafkaSettings(String bootStrapServers, String schemaRegistryUrl, String topic) {
-        this.bootStrapServers = bootStrapServers;
-        this.schemaRegistryUrl = schemaRegistryUrl;
-        this.topic = topic;
+    public KafkaSettings(List<KafkaBroker> brokers) {
+        this.brokers = brokers;
     }
 
-    public String bootStrapServers() {
-        return bootStrapServers;
+    public List<KafkaBroker> getBrokers() {
+        return brokers;
     }
 
-    public void bootStrapServers(String bootStrapServers) {
-        this.bootStrapServers = bootStrapServers;
-    }
-
-
-    public String schemaRegistryUrl() {
-        return schemaRegistryUrl;
-    }
-
-    public void schemaRegistryUrl(String schemaRegistryUrl) {
-        this.schemaRegistryUrl = schemaRegistryUrl;
-    }
-
-    public String topic() {
-        return topic;
-    }
-
-    public void topic(String topic) {
-        this.topic = topic;
+    public void setBrokers(List<KafkaBroker> brokers) {
+        this.brokers = brokers;
     }
 
     @Override
@@ -58,21 +32,18 @@ public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         KafkaSettings that = (KafkaSettings) o;
-        return Objects.equals(bootStrapServers, that.bootStrapServers) && Objects.equals(schemaRegistryUrl, that.schemaRegistryUrl) && Objects.equals(topic, that.topic);
+        return Objects.equals(brokers, that.brokers);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(bootStrapServers, schemaRegistryUrl, topic);
+        return Objects.hash(brokers);
     }
 
+   
     @Override
     public String toString() {
-        return new StringJoiner(", ", KafkaSettings.class.getSimpleName() + "[", "]")
-                .add("bootStrapServers='" + bootStrapServers + "'")
-                .add("schemaRegistryUrl='" + schemaRegistryUrl + "'")
-                .add("topic='" + topic + "'")
-                .toString();
+        return String.format("KafkaSettings [brokers=%s]", brokers);
     }
 
     @Override

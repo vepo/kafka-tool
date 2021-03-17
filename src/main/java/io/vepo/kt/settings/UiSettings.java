@@ -1,14 +1,10 @@
 package io.vepo.kt.settings;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Objects;
-import java.util.StringJoiner;
 
 public class UiSettings implements Settings<UiSettings>, Cloneable {
     static final String UI_SETTINGS_FILE = "ui-properties.json";
 
-    @JsonProperty("mainWindow")
     private WindowSettings mainWindow;
 
     public UiSettings() {
@@ -18,11 +14,11 @@ public class UiSettings implements Settings<UiSettings>, Cloneable {
         this.mainWindow = mainWindow;
     }
 
-    public WindowSettings mainWindow() {
+    public WindowSettings getMainWindow() {
         return mainWindow;
     }
 
-    public void mainWindow(WindowSettings mainWindow) {
+    public void setMainWindow(WindowSettings mainWindow) {
         this.mainWindow = mainWindow;
     }
 
@@ -33,8 +29,10 @@ public class UiSettings implements Settings<UiSettings>, Cloneable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         UiSettings that = (UiSettings) o;
         return Objects.equals(mainWindow, that.mainWindow);
     }
@@ -46,9 +44,7 @@ public class UiSettings implements Settings<UiSettings>, Cloneable {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", UiSettings.class.getSimpleName() + "[", "]")
-                .add("mainWindow=" + mainWindow)
-                .toString();
+        return String.format("UiSettings [mainWindow=%s]", mainWindow);
     }
 
     @Override

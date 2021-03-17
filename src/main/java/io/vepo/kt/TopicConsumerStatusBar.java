@@ -1,9 +1,6 @@
 package io.vepo.kt;
 
-import javafx.scene.layout.HBox;
-import javafx.scene.text.Text;
-
-public class TopicConsumerStatusBar extends HBox {
+public class TopicConsumerStatusBar {// extends HBox {
     public enum Status {
         IDLE("Idle"),
         CONSUMING("Consuming..."),
@@ -17,23 +14,23 @@ public class TopicConsumerStatusBar extends HBox {
         }
     }
 
-    private Text txtStatus;
-    private Text txtCurrenOffset;
-
-    public TopicConsumerStatusBar(double spacing) {
-        super(spacing);
-        txtStatus = new Text(Status.IDLE.text);
-        txtCurrenOffset = new Text("0");
-        this.getChildren().add(txtStatus);
-        this.getChildren().add(txtCurrenOffset);
-    }
-
-    public void status(Status status) {
-        txtStatus.setText(status.text);
-    }
-
-    public void offset(long offset) {
-        txtCurrenOffset.setText(Long.toString(offset));
-    }
+//    private Text txtStatus;
+//    private Text txtCurrenOffset;
+//
+//    public TopicConsumerStatusBar(double spacing) {
+//        super(spacing);
+//        txtStatus = new Text(Status.IDLE.text);
+//        txtCurrenOffset = new Text("0");
+//        this.getChildren().add(txtStatus);
+//        this.getChildren().add(txtCurrenOffset);
+//    }
+//
+//    public void status(Status status) {
+//        txtStatus.setText(status.text);
+//    }
+//
+//    public void offset(long offset) {
+//        txtCurrenOffset.setText(Long.toString(offset));
+//    }
 
 }
