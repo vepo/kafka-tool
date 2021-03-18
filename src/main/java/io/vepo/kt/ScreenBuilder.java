@@ -1,6 +1,5 @@
 package io.vepo.kt;
 
-import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -26,7 +25,6 @@ public interface ScreenBuilder {
 
         public ButtonGropBuilder(Consumer<JComponent> buildCallback) {
             panel = new JPanel();
-            panel.setBackground(Color.YELLOW);
             panel.setLayout(new FlowLayout(FlowLayout.RIGHT));
             buildCallback.accept(panel);
         }
@@ -71,6 +69,8 @@ public interface ScreenBuilder {
 
         private <T extends JComponent> T configureComponent(T component, int colSpan, int fill) {
             GridBagConstraints constraints = new GridBagConstraints();
+            System.out.println("Adding component " + component.getClass().getSimpleName() + " to row=" + currentRow
+                    + " column=" + currentColumn);
             constraints.gridx = currentColumn++;
             constraints.gridy = currentRow;
             constraints.insets = defaultInsets;

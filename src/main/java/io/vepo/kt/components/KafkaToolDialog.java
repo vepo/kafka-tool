@@ -22,7 +22,6 @@ public abstract class KafkaToolDialog extends JDialog {
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                System.out.println(e.getComponent().getSize());
                 Settings.updateUi(settings -> {
                     Dimension size = e.getComponent().getSize();
                     settings.getDialogs().put(dialogName, new WindowSettings(size.width, size.height));

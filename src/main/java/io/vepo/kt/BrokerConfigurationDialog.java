@@ -8,6 +8,8 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableModel;
@@ -130,7 +132,11 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
         KafkaBrokersTableModel dm = new KafkaBrokersTableModel();
         ButtonGropBuilder buttonGroupBuilder = builder.hGrow(builder.newButtonGroup(2), 1.0);
         JButton btnAdd = buttonGroupBuilder.newButton("Add");
+        builder.newLine();
         JTable brokerTable = builder.vGrow(builder.newTable(dm, 2), 1.0);
+        brokerTable.getSelectionModel().addListSelectionListener(e-> {
+            System.out.println(e);
+        });
         btnAdd.addActionListener(e -> {
             dm.addBroker(new KafkaBroker(txtName.getText().toString(),
                                          txtBootstrapServers.getText().trim(),
