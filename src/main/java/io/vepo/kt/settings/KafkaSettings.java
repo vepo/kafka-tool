@@ -1,17 +1,14 @@
 package io.vepo.kt.settings;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
-    static final String KAFKA_SETTINGS_FILE = "kafka-properties.json";
     private List<KafkaBroker> brokers;
 
     public KafkaSettings() {
-    }
-
-    public KafkaSettings(List<KafkaBroker> brokers) {
-        this.brokers = brokers;
+        this.brokers = new ArrayList<>();
     }
 
     public List<KafkaBroker> getBrokers() {
@@ -23,14 +20,11 @@ public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
     }
 
     @Override
-    public void save() {
-        Settings.save(KAFKA_SETTINGS_FILE, this);
-    }
-
-    @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         KafkaSettings that = (KafkaSettings) o;
         return Objects.equals(brokers, that.brokers);
     }
@@ -40,7 +34,6 @@ public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
         return Objects.hash(brokers);
     }
 
-   
     @Override
     public String toString() {
         return String.format("KafkaSettings [brokers=%s]", brokers);

@@ -1,17 +1,17 @@
 package io.vepo.kt.settings;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class UiSettings implements Settings<UiSettings>, Cloneable {
-    static final String UI_SETTINGS_FILE = "ui-properties.json";
 
     private WindowSettings mainWindow;
+    private Map<String, WindowSettings> dialogs;
 
     public UiSettings() {
-    }
-
-    public UiSettings(WindowSettings mainWindow) {
-        this.mainWindow = mainWindow;
+        mainWindow = new WindowSettings(512, 512);
+        dialogs = new HashMap<String, WindowSettings>();
     }
 
     public WindowSettings getMainWindow() {
@@ -22,29 +22,37 @@ public class UiSettings implements Settings<UiSettings>, Cloneable {
         this.mainWindow = mainWindow;
     }
 
-    @Override
-    public void save() {
-        Settings.save(UI_SETTINGS_FILE, this);
+    public Map<String, WindowSettings> getDialogs() {
+        return dialogs;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        UiSettings that = (UiSettings) o;
-        return Objects.equals(mainWindow, that.mainWindow);
+    public void setDialogs(Map<String, WindowSettings> dialogs) {
+        this.dialogs = dialogs;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mainWindow);
+        return Objects.hash(dialogs, mainWindow);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        UiSettings other = (UiSettings) obj;
+        return Objects.equals(dialogs, other.dialogs) && Objects.equals(mainWindow, other.mainWindow);
     }
 
     @Override
     public String toString() {
-        return String.format("UiSettings [mainWindow=%s]", mainWindow);
+        return String.format("UiSettings [mainWindow=%s, dialogs=%s]", mainWindow, dialogs);
     }
 
     @Override

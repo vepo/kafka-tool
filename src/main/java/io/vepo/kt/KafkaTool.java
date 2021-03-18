@@ -112,7 +112,7 @@ public class KafkaTool extends JFrame implements KafkaConnectionWatcher {
         setTitle("Kafka Tool");
         GridBagFormBuilder screenBuilder = ScreenBuilder.grid();
         screenBuilder.newLabel("Broker");
-        screenBuilder.newComboBox(new KafkaBrokerModel());
+        screenBuilder.hGrow(screenBuilder.newComboBox(new KafkaBrokerModel()), 1.0);
 
 //        brokerCombo.setItems(observableList(Settings.kafka().getBrokers()));
 //        brokerCombo.setCellFactory(items -> new ListCell<KafkaBroker>() {
@@ -129,7 +129,7 @@ public class KafkaTool extends JFrame implements KafkaConnectionWatcher {
 //        grid.add(brokerCombo, 1, 0);
         JButton btnConfigBrokers = screenBuilder.newButton("Config");
         btnConfigBrokers.addActionListener(e -> {
-            BrokerConfigurationStage brokerConfigurationWindow = new BrokerConfigurationStage(this);
+            BrokerConfigurationDialog brokerConfigurationWindow = new BrokerConfigurationDialog(this);
             brokerConfigurationWindow.setVisible(true);
         });
         screenBuilder.newLine();
@@ -184,10 +184,10 @@ public class KafkaTool extends JFrame implements KafkaConnectionWatcher {
 //        stage.show();
         this.addComponentListener(new ComponentAdapter() {
             public void componentResized(ComponentEvent e) {
-                UiSettings uiSettings = Settings.ui();
-                uiSettings.getMainWindow().setHeight(getHeight());
-                uiSettings.getMainWindow().setWidth(getWidth());
-                uiSettings.save();
+                Settings.updateUi(settings -> {
+                    settings.getMainWindow().setHeight(getHeight());
+                    settings.getMainWindow().setWidth(getWidth());
+                });
             }
         });
 

@@ -4,5 +4,6 @@
 .idea
 kafka-tool.iml
 .kafka-tool
+.kafka-tool-swing
 target
 KafkaTool.cmd
