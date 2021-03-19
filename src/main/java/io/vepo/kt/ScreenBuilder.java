@@ -1,5 +1,7 @@
 package io.vepo.kt;
 
+import static javax.swing.SwingUtilities.getAncestorOfClass;
+
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -128,9 +130,13 @@ public interface ScreenBuilder {
             return newTable(dm, 1);
         }
 
+        public JTable newTable(int colSpan) {
+            return newTable(null, colSpan);
+        }
+
         public JTable newTable(TableModel dm, int colSpan) {
             JTable table = new JTable(dm);
-            configureComponent(new JScrollPane(table), colSpan, GridBagConstraints.HORIZONTAL);
+            configureComponent(new JScrollPane(table), colSpan, GridBagConstraints.BOTH);
             return table;
         }
 
@@ -143,9 +149,18 @@ public interface ScreenBuilder {
         }
 
         public <T extends JComponent> T vGrow(T component, double value) {
-            GridBagConstraints constraint = layout.getConstraints(component);
+            GridBagConstraints constraint;
+            if (component instanceof JTable) {
+                constraint = layout.getConstraints(getAncestorOfClass(JScrollPane.class, component));
+            } else {
+                constraint = layout.getConstraints(component);
+            }
             constraint.weighty = value;
-            layout.setConstraints(component, constraint);
+            if (component instanceof JTable) {
+                layout.setConstraints(getAncestorOfClass(JScrollPane.class, component), constraint);
+            } else {
+                layout.setConstraints(component, constraint);
+            }
             return component;
         }
 

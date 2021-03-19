@@ -1,21 +1,20 @@
 package io.vepo.kt;
 
 import java.awt.Frame;
-import java.util.ArrayList;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
-import javax.swing.table.TableModel;
+import javax.swing.table.AbstractTableModel;
 
 import io.vepo.kt.ScreenBuilder.ButtonGropBuilder;
 import io.vepo.kt.ScreenBuilder.GridBagFormBuilder;
+import io.vepo.kt.components.ButtonColumn;
 import io.vepo.kt.components.KafkaToolDialog;
 import io.vepo.kt.settings.KafkaBroker;
 import io.vepo.kt.settings.Settings;
@@ -31,13 +30,20 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
         super("configureBrokersDialog", owner, true);
     }
 
-    private class KafkaBrokersTableModel implements TableModel {
+    private class KafkaBrokersTableModel extends AbstractTableModel {
         private List<KafkaBroker> brokers;
-        private List<TableModelListener> listeners;
 
-        public KafkaBrokersTableModel() {
+        public KafkaBrokersTableModel(JTable table) {
             brokers = Settings.kafka().getBrokers();
-            listeners = new ArrayList<>();
+            ButtonColumn buttonColumn = new ButtonColumn(table, e -> {
+                int row = Integer.valueOf(e.getActionCommand());
+                brokers.remove(row);
+                fireTableRowsDeleted(row, row);
+
+            }, 3);
+            buttonColumn.setMnemonic(KeyEvent.VK_D);
+
+            table.setModel(this);
         }
 
         @Override
@@ -46,13 +52,8 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
         }
 
         @Override
-        public void removeTableModelListener(TableModelListener listener) {
-            listeners.remove(listener);
-        }
-
-        @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return false;
+            return true;
         }
 
         @Override
@@ -64,10 +65,15 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
             switch (columnIndex) {
                 case 0:
                     kafkaBroker.setName(value);
+                    break;
                 case 1:
                     kafkaBroker.setBootStrapServers(value);
+                    break;
                 case 2:
                     kafkaBroker.setSchemaRegistryUrl(value);
+                    break;
+                case 3:
+                    break;
                 default:
                     throw new RuntimeException("What?!");
             }
@@ -81,6 +87,8 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
                     return kafkaBroker.getBootStrapServers();
                 case 2:
                     return kafkaBroker.getSchemaRegistryUrl();
+                case 3:
+                    return "Delete";
                 default:
                     throw new RuntimeException("What?!");
             }
@@ -93,27 +101,30 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
 
         @Override
         public String getColumnName(int columnIndex) {
-            return COLUMN_NAMES[columnIndex];
+            if (columnIndex == COLUMN_NAMES.length) {
+                return "Actions";
+            } else {
+                return COLUMN_NAMES[columnIndex];
+            }
         }
 
         @Override
         public int getColumnCount() {
-            return COLUMN_NAMES.length;
+            return COLUMN_NAMES.length + 1;
         }
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            return String.class;
-        }
-
-        @Override
-        public void addTableModelListener(TableModelListener listener) {
-            listeners.add(listener);
+            if (columnIndex == COLUMN_NAMES.length) {
+                return ActionListener.class;
+            } else {
+                return String.class;
+            }
         }
 
         public void addBroker(KafkaBroker kafkaBroker) {
-            this.brokers.add(kafkaBroker);
-            this.listeners.forEach(listener -> listener.tableChanged(new TableModelEvent(this)));
+            brokers.add(kafkaBroker);
+            fireTableChanged(new TableModelEvent(this));
         }
     }
 
@@ -129,12 +140,12 @@ public class BrokerConfigurationDialog extends KafkaToolDialog {
         builder.newLabel("Schema Registry URL");
         JTextField txtSchemaRegistry = builder.hGrow(builder.newTextField(), 1.0);
         builder.newLine();
-        KafkaBrokersTableModel dm = new KafkaBrokersTableModel();
         ButtonGropBuilder buttonGroupBuilder = builder.hGrow(builder.newButtonGroup(2), 1.0);
         JButton btnAdd = buttonGroupBuilder.newButton("Add");
         builder.newLine();
-        JTable brokerTable = builder.vGrow(builder.newTable(dm, 2), 1.0);
-        brokerTable.getSelectionModel().addListSelectionListener(e-> {
+        JTable brokerTable = builder.vGrow(builder.newTable(2), 1.0);
+        KafkaBrokersTableModel dm = new KafkaBrokersTableModel(brokerTable);
+        brokerTable.getSelectionModel().addListSelectionListener(e -> {
             System.out.println(e);
         });
         btnAdd.addActionListener(e -> {
