@@ -145,7 +145,7 @@
 				<artifactId>jpackage-maven-plugin</artifactId>
 				<version>0.1.2</version>
 				<configuration>
-					<type>EXE</type>
+					<type>MSI</type>
 					<name>KafkaTool</name>
 					<modulepath>
 						<dependencysets>
@@ -168,14 +168,9 @@
 					<input>target</input>
 					<mainclass>io.vepo.kt.KafkaTool</mainclass>
 					<mainjar>kafka-tool.jar</mainjar>
-					<!-- addlaunchers>
-						<addlauncher>
-							<name>kafka-tool</name>
-							<appversion>1.0</appversion>
-							<winconsole>true</winconsole>
-							<javaOptions>-verbose:class</javaOptions>
-						</addlauncher>
-					</addlaunchers> -->
+					<winmenu>true</winmenu>
+					<icon>resources/kafka.ico</icon>
+					<winupgradeuuid>F4D592A4-F09D-4F5A-9CE2-B68052CADF68</winupgradeuuid>
 				</configuration>
 			</plugin>
 		</plugins>
