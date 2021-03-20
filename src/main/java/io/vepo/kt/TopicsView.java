@@ -95,7 +95,7 @@ public class TopicsView extends TableView<TopicInfo> implements KafkaConnectionW
             btnSubscribe.setOnAction(e -> {
                 var consumerStage = new TopicSubscribeStage(getTableRow().itemProperty()
                                                                          .get()
-                                                                         .name(),
+                                                                         .getName(),
                         (Stage) getScene().getWindow(),
                         Settings.kafka()
                                 .clone());

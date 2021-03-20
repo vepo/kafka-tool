@@ -1,6 +1,5 @@
 package io.vepo.kt;
 
-import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
 import static io.vepo.kt.UiConstants.PADDING;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
@@ -60,8 +59,8 @@ public class TopicSubscribeStage extends Stage {
                 var message = getTableRow().itemProperty().get();
                 if (nonNull(message)) {
                     try {
-                        new MessageViewerStage(message.key(),
-                                mapper.readTree(message.value()).toPrettyString(),
+                        new MessageViewerStage(message.getKey(),
+                                mapper.readTree(message.getValue()).toPrettyString(),
                                 (Stage) getScene().getWindow()).show();
                     } catch (JsonProcessingException e) {
                         logger.error("Could not format JSON!", e);
@@ -206,7 +205,7 @@ public class TopicSubscribeStage extends Stage {
             configProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
             configProperties.put(VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
             configProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-            configProperties.put(SCHEMA_REGISTRY_URL_CONFIG, settings.schemaRegistryUrl());
+            configProperties.put("schema.registry.url", settings.schemaRegistryUrl());
             try (KafkaConsumer<String, GenericData.Record> consumer = new KafkaConsumer<>(configProperties)) {
                 consumer.subscribe(asList(this.topic));
                 while (running.get()) {
