@@ -25,7 +25,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Create Installer
         run: mvn clean package jpackage:jpackage
-      - run: Save Installer
+      - name: Save Installer
         uses: actions/upload-artifact@v2
         with:
           name: MSI Installer
