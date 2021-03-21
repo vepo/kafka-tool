@@ -67,10 +67,6 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.0</version>
-				<configuration>
-					<source>15</source>
-					<target>15</target>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -170,6 +166,7 @@
 					<mainclass>io.vepo.kt.KafkaTool</mainclass>
 					<mainjar>kafka-tool.jar</mainjar>
 					<winmenu>true</winmenu>
+					<appversion>${project.version}</appversion>
 					<icon>resources/kafka.ico</icon>
 					<winupgradeuuid>F4D592A4-F09D-4F5A-9CE2-B68052CADF68</winupgradeuuid>
 				</configuration>

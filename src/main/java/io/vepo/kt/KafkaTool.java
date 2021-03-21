@@ -82,7 +82,7 @@ public class KafkaTool extends Application {
                    .addListener((obs, oldValue, newValue) -> btnConnect.setDisable(isNull(newValue)));
 
         var topicsTable = gridBuilder.newLine()
-                                     .<TopicInfo>newTableView(3)
+                                     .<TopicInfo>addTableView(3)
                                      .withColumn("Topic")
                                      .fromProperty("name")
                                      .notEditable()
@@ -112,16 +112,21 @@ public class KafkaTool extends Application {
                                      .resizePolicy(fixedSize(196))
                                      .add()
                                      .build();
+        topicsTable.setDisable(true);
 
         var btnRefreshTopics = gridBuilder.newLine().addButton("Refresh", 3);
         btnRefreshTopics.setDisable(true);
-        btnRefreshTopics.setOnAction(e -> adminService.listTopics(topics -> topicsTable.setItems(observableArrayList(topics))));
+        btnRefreshTopics.setOnAction(e -> adminService.listTopics(topics -> {
+            topicsTable.setDisable(false);
+            topicsTable.setItems(observableArrayList(topics));
+        }));
 
         btnConnect.setOnAction(e -> adminService.connect(serverCombo.getValue(), status -> {
             switch (status) {
                 case CONNECTED:
                     adminService.listTopics(topics -> topicsTable.setItems(observableArrayList(topics)));
                     btnRefreshTopics.setDisable(false);
+                    topicsTable.setDisable(false);
                     break;
                 default:
                     throw new IllegalArgumentException("Unexpected value: " + status);
@@ -131,9 +136,15 @@ public class KafkaTool extends Application {
         stage.setScene(gridBuilder.build(uiSettings.getMainWindow().getWidth(),
                                          uiSettings.getMainWindow().getHeight()));
         stage.widthProperty().addListener((obs, oldValue,
-                newValue) -> Settings.updateUi(ui -> ui.getMainWindow().setWidth(newValue.intValue())));
+                newValue) -> Settings.updateUi(ui -> ui.getMainWindow()
+                                                       .setWidth((int) stage.getScene()
+                                                                            .widthProperty()
+                                                                            .get())));
         stage.heightProperty().addListener((obs, oldValue,
-                newValue) -> Settings.updateUi(ui -> ui.getMainWindow().setHeight(newValue.intValue())));
+                newValue) -> Settings.updateUi(ui -> ui.getMainWindow()
+                                                       .setHeight((int) stage.getScene()
+                                                                             .heightProperty()
+                                                                             .get())));
         stage.getIcons().add(new Image(KafkaTool.class.getResourceAsStream("/kafka.png")));
         stage.show();
     }

@@ -8,7 +8,8 @@ public class TopicConsumerStatusBar extends HBox {
         IDLE("Idle"),
         CONSUMING("Consuming..."),
         FINISHED("Finished!"),
-        STOPPED("Stopped");
+        STOPPED("Stopped"), 
+        ERROR("Error");
 
         private String text;
 

@@ -13,22 +13,22 @@ import java.util.function.Consumer;
 
 import io.vepo.kt.ui.ResizePolicy.FixedSizeResizePolicy;
 import javafx.collections.ObservableList;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.text.Text;
-import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 
 public interface ScreenBuilder {
@@ -58,6 +58,7 @@ public interface ScreenBuilder {
             GridPane.setFillHeight(btn, true);
             GridPane.setColumnSpan(btn, colSpan);
             btn.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setHgrow(btn, Priority.SOMETIMES);
             pane.add(btn, columnIndex, rowIndex);
             return btn;
 
@@ -68,11 +69,27 @@ public interface ScreenBuilder {
         }
 
         public <T> ComboBox<T> addComboBox(ObservableList<T> items) {
+            return addComboBox(items, 1);
+        }
+
+        public <T> ComboBox<T> addComboBox(ObservableList<T> items, int colSpan) {
             var combo = new ComboBox<T>(items);
             pane.add(combo, currentColumn++, currentRow);
             combo.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setColumnSpan(combo, colSpan);
             GridPane.setHgrow(combo, Priority.ALWAYS);
             return combo;
+
+        }
+
+        public <T> TableViewBuilder<T> addTableView(int colSpan) {
+            var table = new TableView<T>();
+            pane.add(table, currentColumn++, currentRow);
+            GridPane.setHgrow(table, Priority.ALWAYS);
+            GridPane.setColumnSpan(table, colSpan);
+            table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            GridPane.setVgrow(table, Priority.ALWAYS);
+            return new TableViewBuilder<T>(table);
         }
 
         public Text addText(String label) {
@@ -86,6 +103,25 @@ public interface ScreenBuilder {
             pane.add(txt, currentColumn++, currentRow);
             GridPane.setHgrow(txt, Priority.ALWAYS);
             return txt;
+        }
+
+        public TextArea addTextArea() {
+            var txt = new TextArea();
+            pane.add(txt, currentColumn++, currentRow);
+            GridPane.setHgrow(txt, Priority.ALWAYS);
+            GridPane.setVgrow(txt, Priority.ALWAYS);
+            return txt;
+        }
+
+        public <T extends Node> T addCustom(T control) {
+            return addCustom(control, 1);
+        }
+
+        public <T extends Node> T addCustom(T control, int colSpan) {
+            pane.add(control, currentColumn++, currentRow);
+            GridPane.setHgrow(control, Priority.ALWAYS);
+            GridPane.setColumnSpan(control, colSpan);
+            return control;
         }
 
         @Override
@@ -102,16 +138,6 @@ public interface ScreenBuilder {
             currentColumn = 0;
             currentRow++;
             return this;
-        }
-
-        public <T> TableViewBuilder<T> newTableView(int colSpan) {
-            var table = new TableView<T>();
-            pane.add(table, currentColumn++, currentRow);
-            GridPane.setHgrow(table, Priority.ALWAYS);
-            GridPane.setColumnSpan(table, colSpan);
-            table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-            GridPane.setVgrow(table, Priority.ALWAYS);
-            return new TableViewBuilder<T>(table);
         }
 
         public GridScreenBuilder skipCell() {
@@ -132,6 +158,20 @@ public interface ScreenBuilder {
         }
 
         public TableView<T> build() {
+            tableView.disabledProperty()
+                     .addListener((obs, oldValue, newValue) -> ResizePolicy.apply(resizePolicies,
+                                                                                  tableView.widthProperty()
+                                                                                           .get(),
+                                                                                  (index, width) -> {
+                                                                                      tableView.getColumns()
+                                                                                               .get(index)
+                                                                                               .setPrefWidth(width);
+                                                                                      tableView.getColumns().get(index)
+                                                                                               .setMinWidth(width);
+                                                                                      tableView.getColumns()
+                                                                                               .get(index)
+                                                                                               .setMaxWidth(width);
+                                                                                  }));
             tableView.widthProperty()
                      .addListener((obs, oldValue, newValue) -> ResizePolicy.apply(resizePolicies,
                                                                                   newValue.doubleValue(),
@@ -139,17 +179,11 @@ public interface ScreenBuilder {
                                                                                       tableView.getColumns().get(index)
                                                                                                .setPrefWidth(width);
                                                                                       tableView.getColumns().get(index)
+                                                                                               .setMinWidth(width);
+                                                                                      tableView.getColumns().get(index)
                                                                                                .setMaxWidth(width);
                                                                                   }));
             return tableView;
-        }
-
-        public TableViewBuilder<T> onShow(Consumer<EventHandler<WindowEvent>> value) {
-            value.accept(e -> ResizePolicy.apply(resizePolicies, tableView.getWidth(), (index, width) -> {
-                tableView.getColumns().get(index).setPrefWidth(width);
-                tableView.getColumns().get(index).setMaxWidth(width);
-            }));
-            return this;
         }
 
         public TableViewButtonsColumnBuilder<T> withButtons(String columnHeader) {
@@ -206,7 +240,7 @@ public interface ScreenBuilder {
 
         public TableViewBuilder<R> add() {
             if (resizePolicy instanceof FixedSizeResizePolicy) {
-                ((FixedSizeResizePolicy) resizePolicy).setPenalty(PADDING * buttons.size());
+                ((FixedSizeResizePolicy) resizePolicy).setPenalty(PADDING * Math.max(buttons.size(), 2));
             }
             tableBuilder.resizePolicies.add(Optional.ofNullable(resizePolicy)
                                                     .orElseGet(() -> ResizePolicy.grow(1)));

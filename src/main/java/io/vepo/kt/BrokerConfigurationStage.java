@@ -30,7 +30,7 @@ public class BrokerConfigurationStage extends AbstractKtStage {
         var brokers = Settings.kafka().getBrokers();
         var data = observableArrayList(brokers);
         var dataTable = gridBuilder.newLine()
-                                   .<KafkaBroker>newTableView(2)
+                                   .<KafkaBroker>addTableView(2)
                                    .<String>withColumn("Name")
                                    .fromProperty("name")
                                    .editable(TextFieldTableCell.<KafkaBroker>forTableColumn(),
@@ -73,7 +73,6 @@ public class BrokerConfigurationStage extends AbstractKtStage {
                                            })
                                    .resizePolicy(fixedSize(64))
                                    .add()
-                                   .onShow(this::setOnShown)
                                    .build();
 
         dataTable.setItems(data);
@@ -91,5 +90,7 @@ public class BrokerConfigurationStage extends AbstractKtStage {
             });
         });
     }
+    
+    
 
 }

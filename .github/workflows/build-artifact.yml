@@ -1,13 +1,13 @@
 name: Build
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
   build:
-    name: Build
+    name: Build Artifact
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,20 +17,16 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 16
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v1
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
       - name: Cache Maven packages
         uses: actions/cache@v1
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Build and analyze
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+      - name: Create Installer
+        run: mvn clean package jpackage:jpackage
+      - run: Save Installer
+        uses: actions/upload-artifact@v2
+        with:
+          name: MSI Installer
+          path: target\jpackage\KafkaTool-*.msi
