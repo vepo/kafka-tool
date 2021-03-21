@@ -7,3 +7,4 @@ kafka-tool.iml
 .kafka-tool-swing
 target
 KafkaTool.cmd
+pom.xml.versionsBackup
