@@ -39,6 +39,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: target\jpackage\KafkaTool-*.msi
+          asset_path: ./target/jpackage/KafkaTool-*.msi
           asset_name: MSI Installer
           asset_content_type: application/octet-stream
