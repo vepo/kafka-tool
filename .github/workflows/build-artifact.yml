@@ -34,7 +34,7 @@ jobs:
           draft: false
           prerelease: false
       - name: Save MSI Installer
-        uses: actions/action-gh-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
