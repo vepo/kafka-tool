@@ -17,7 +17,7 @@ public class BrokerConfigurationStage extends AbstractKtStage {
 
     public BrokerConfigurationStage(Stage owner) {
         super("kafkaBrokerConfig", owner, true, new WindowSettings(670, 512));
-
+        setTitle("Kafka Brokers");
         var gridBuilder = ScreenBuilder.grid();
         gridBuilder.addText("Name");
         var txtName = gridBuilder.addTextField();

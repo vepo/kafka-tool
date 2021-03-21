@@ -12,9 +12,19 @@ public interface ResizePolicy {
     class FixedSizeResizePolicy implements ResizePolicy {
 
         private final int size;
+        private int penalty;
 
         public FixedSizeResizePolicy(int size) {
             this.size = size;
+            this.penalty = 0;
+        }
+        
+        protected void setPenalty(int penalty) {
+            this.penalty = penalty;
+        }
+        
+        public int getPenalty() {
+            return penalty;
         }
 
     }
@@ -38,7 +48,7 @@ public interface ResizePolicy {
                 - resizePolicies.size() + 1 // number of borders
                 - resizePolicies.stream()
                                 .filter(policy -> policy instanceof FixedSizeResizePolicy)
-                                .mapToDouble(r -> (double) ((FixedSizeResizePolicy) r).size)
+                                .mapToDouble(r -> (double) ((FixedSizeResizePolicy) r).size + (double) ((FixedSizeResizePolicy) r).penalty)
                                 .sum();
         int distibutionFactor = (int) resizePolicies.stream()
                                                     .filter(policy -> policy instanceof DistributeResizePolicy)

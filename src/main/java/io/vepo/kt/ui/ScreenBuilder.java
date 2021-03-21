@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import io.vepo.kt.ui.ResizePolicy.FixedSizeResizePolicy;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -92,6 +93,11 @@ public interface ScreenBuilder {
             return new Scene(pane);
         }
 
+        @Override
+        public Scene build(int width, int height) {
+            return new Scene(pane, width, height);
+        }
+
         public GridScreenBuilder newLine() {
             currentColumn = 0;
             currentRow++;
@@ -104,6 +110,7 @@ public interface ScreenBuilder {
             GridPane.setHgrow(table, Priority.ALWAYS);
             GridPane.setColumnSpan(table, colSpan);
             table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            GridPane.setVgrow(table, Priority.ALWAYS);
             return new TableViewBuilder<T>(table);
         }
 
@@ -126,19 +133,14 @@ public interface ScreenBuilder {
 
         public TableView<T> build() {
             tableView.widthProperty()
-                     .addListener((obs, oldValue, newValue) -> {
-                         System.out.println("--------------");
-                         System.out.println("New value: " + newValue);
-                         ResizePolicy.apply(resizePolicies,
-                                            newValue.doubleValue(),
-                                            (index, width) -> {
-                                                System.out.println("Column value: " + width);
-                                                tableView.getColumns().get(index)
-                                                         .setPrefWidth(width);
-                                                tableView.getColumns().get(index)
-                                                         .setMaxWidth(width);
-                                            });
-                     });
+                     .addListener((obs, oldValue, newValue) -> ResizePolicy.apply(resizePolicies,
+                                                                                  newValue.doubleValue(),
+                                                                                  (index, width) -> {
+                                                                                      tableView.getColumns().get(index)
+                                                                                               .setPrefWidth(width);
+                                                                                      tableView.getColumns().get(index)
+                                                                                               .setMaxWidth(width);
+                                                                                  }));
             return tableView;
         }
 
@@ -203,6 +205,9 @@ public interface ScreenBuilder {
         }
 
         public TableViewBuilder<R> add() {
+            if (resizePolicy instanceof FixedSizeResizePolicy) {
+                ((FixedSizeResizePolicy) resizePolicy).setPenalty(PADDING * buttons.size());
+            }
             tableBuilder.resizePolicies.add(Optional.ofNullable(resizePolicy)
                                                     .orElseGet(() -> ResizePolicy.grow(1)));
             tableBuilder.tableView.getColumns().add(column);
@@ -290,4 +295,6 @@ public interface ScreenBuilder {
     }
 
     public Scene build();
+
+    public Scene build(int width, int height);
 }

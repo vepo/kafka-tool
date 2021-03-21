@@ -77,7 +77,7 @@ public class KafkaTool extends Application {
 
         var btnConnect = gridBuilder.newLine().skipCell().addButton("Connect", 2);
         btnConnect.setDisable(true);
-
+        btnConnect.setMinWidth(196);
         serverCombo.valueProperty()
                    .addListener((obs, oldValue, newValue) -> btnConnect.setDisable(isNull(newValue)));
 
@@ -109,54 +109,32 @@ public class KafkaTool extends Application {
                                                                                      serverCombo.getValue().clone());
                                          consumerStage.show();
                                      })
-                                     .resizePolicy(fixedSize(256))
+                                     .resizePolicy(fixedSize(196))
                                      .add()
                                      .build();
+
+        var btnRefreshTopics = gridBuilder.newLine().addButton("Refresh", 3);
+        btnRefreshTopics.setDisable(true);
+        btnRefreshTopics.setOnAction(e -> adminService.listTopics(topics -> topicsTable.setItems(observableArrayList(topics))));
 
         btnConnect.setOnAction(e -> adminService.connect(serverCombo.getValue(), status -> {
             switch (status) {
                 case CONNECTED:
                     adminService.listTopics(topics -> topicsTable.setItems(observableArrayList(topics)));
+                    btnRefreshTopics.setDisable(false);
                     break;
                 default:
                     throw new IllegalArgumentException("Unexpected value: " + status);
             }
         }));
-//
-//        topicsView = new TopicsView(adminService);
-//        grid.add(topicsView, 0, 3);
-//        setColumnSpan(topicsView, 2);
-//        setVgrow(topicsView, Priority.ALWAYS);
-//
-//        var btnRefreshTopics = new Button("Refresh");
-//        btnRefreshTopics.setOnAction(e -> topicsView.update());
-//        grid.add(btnRefreshTopics, 0, 4);
-//        setColumnSpan(btnRefreshTopics, 2);
-
-//        var currentSettings = Settings.kafka();
-//        this.bootstrapField.textProperty().set(currentSettings.bootStrapServers());
-//        this.schemaRegistryUrlField.textProperty().set(currentSettings.schemaRegistryUrl());
-//        updateButton();
-
-//        var mainWindows = Settings.ui().mainWindow();
-//        var scene = new Scene(gridBuilder.build());// mainWindows.width(), mainWindows.height());
-
-        stage.setScene(gridBuilder.build());
+        var uiSettings = Settings.ui();
+        stage.setScene(gridBuilder.build(uiSettings.getMainWindow().getWidth(),
+                                         uiSettings.getMainWindow().getHeight()));
+        stage.widthProperty().addListener((obs, oldValue,
+                newValue) -> Settings.updateUi(ui -> ui.getMainWindow().setWidth(newValue.intValue())));
+        stage.heightProperty().addListener((obs, oldValue,
+                newValue) -> Settings.updateUi(ui -> ui.getMainWindow().setHeight(newValue.intValue())));
         stage.getIcons().add(new Image(KafkaTool.class.getResourceAsStream("/kafka.png")));
-        stage.widthProperty().addListener((obs, oldValue, newValue) -> {
-//            topicsView.setPrefWidth(newValue.doubleValue());
-//            btnClusterConnect.setPrefWidth(grid.getCellBounds(1, 2).getWidth());
-//            btnRefreshTopics.setPrefWidth(newValue.doubleValue());
-
-//            var uiSettings = Settings.ui();
-//            uiSettings.mainWindow().width(newValue.intValue());
-//            uiSettings.save();
-        });
-//        stage.heightProperty().addListener((obs, oldValue, newValue) -> {
-//            var uiSettings = Settings.ui();
-//            uiSettings.mainWindow().height(newValue.intValue());
-//            uiSettings.save();
-//        });
         stage.show();
     }
 
