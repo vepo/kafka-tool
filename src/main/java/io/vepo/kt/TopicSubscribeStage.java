@@ -1,5 +1,6 @@
 package io.vepo.kt;
 
+import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
 import static io.vepo.kt.UiConstants.PADDING;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
@@ -12,7 +13,6 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_
 import static org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG;
 
 import java.time.Duration;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -29,7 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.vepo.kt.TopicConsumerStatusBar.Status;
-import io.vepo.kt.settings.KafkaSettings;
+import io.vepo.kt.settings.KafkaBroker;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -46,7 +46,6 @@ import javafx.stage.Stage;
 
 public class TopicSubscribeStage extends Stage {
 
-
     public class MessagesActionButtonCell extends TableCell<KafkaMessage, Void> {
         private HBox box;
 
@@ -60,8 +59,8 @@ public class TopicSubscribeStage extends Stage {
                 if (nonNull(message)) {
                     try {
                         new MessageViewerStage(message.getKey(),
-                                mapper.readTree(message.getValue()).toPrettyString(),
-                                (Stage) getScene().getWindow()).show();
+                                               mapper.readTree(message.getValue()).toPrettyString(),
+                                               (Stage) getScene().getWindow()).show();
                     } catch (JsonProcessingException e) {
                         logger.error("Could not format JSON!", e);
                     }
@@ -93,11 +92,11 @@ public class TopicSubscribeStage extends Stage {
     private TableView<KafkaMessage> dataView;
     private ObjectMapper mapper = new ObjectMapper();
     private AtomicBoolean running = new AtomicBoolean(false);
-    private KafkaSettings settings;
+    private KafkaBroker broker;
     private String topic;
 
-    public TopicSubscribeStage(String topic, Stage owner, KafkaSettings settings) {
-        this.settings = settings;
+    public TopicSubscribeStage(String topic, Stage owner, KafkaBroker broker) {
+        this.broker = broker;
         this.topic = topic;
         setTitle("Topic: " + topic);
 
@@ -165,8 +164,8 @@ public class TopicSubscribeStage extends Stage {
         btnMessagesClear.setOnAction(e -> clearMessages());
         messagesControllerBox.getChildren().add(btnMessagesClear);
         messagesControllerBox.widthProperty()
-                .addListener((__, newValue,
-                              oldValue) -> btnMessagesClear.setPrefWidth(newValue.doubleValue()));
+                             .addListener((__, newValue,
+                                     oldValue) -> btnMessagesClear.setPrefWidth(newValue.doubleValue()));
         grid.add(messagesControllerBox, 0, 2);
 
         consumerStatusBar = new TopicConsumerStatusBar(PADDING);
@@ -200,12 +199,12 @@ public class TopicSubscribeStage extends Stage {
         consumerStatusBar.status(Status.CONSUMING);
         consumerExecutor.submit(() -> {
             Properties configProperties = new Properties();
-            configProperties.put(BOOTSTRAP_SERVERS_CONFIG, settings.bootStrapServers());
+            configProperties.put(BOOTSTRAP_SERVERS_CONFIG, broker.getBootStrapServers());
             configProperties.put(GROUP_ID_CONFIG, "random-" + UUID.randomUUID().toString());
             configProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
             configProperties.put(VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
             configProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-            configProperties.put("schema.registry.url", settings.schemaRegistryUrl());
+            configProperties.put(SCHEMA_REGISTRY_URL_CONFIG, broker.getSchemaRegistryUrl());
             try (KafkaConsumer<String, GenericData.Record> consumer = new KafkaConsumer<>(configProperties)) {
                 consumer.subscribe(asList(this.topic));
                 while (running.get()) {

@@ -111,8 +111,9 @@
 				<artifactId>javafx-maven-plugin</artifactId>
 				<version>0.0.5</version>
 				<configuration>
-					<!--options> <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5555</option> 
-						</options -->
+					<options>
+						<option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5555</option>
+					</options>
 					<mainClass>io.vepo.kt.KafkaTool</mainClass>
 				</configuration>
 			</plugin>

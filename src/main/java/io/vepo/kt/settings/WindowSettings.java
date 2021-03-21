@@ -1,15 +1,9 @@
 package io.vepo.kt.settings;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Objects;
-import java.util.StringJoiner;
 
-public class WindowSettings {
-    @JsonProperty("width")
+public class WindowSettings implements Cloneable {
     private int width;
-    @JsonProperty("height")
     private int height;
 
     public WindowSettings() {
@@ -20,27 +14,28 @@ public class WindowSettings {
         this.height = height;
     }
 
-
-    public int height() {
+    public int getHeight() {
         return height;
     }
 
-    public void height(int height) {
+    public void setHeight(int height) {
         this.height = height;
     }
 
-    public int width() {
+    public int getWidth() {
         return width;
     }
 
-    public void width(int width) {
+    public void setWidth(int width) {
         this.width = width;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         WindowSettings that = (WindowSettings) o;
         return width == that.width && height == that.height;
     }
@@ -52,9 +47,16 @@ public class WindowSettings {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", WindowSettings.class.getSimpleName() + "[", "]")
-                .add("width=" + width)
-                .add("height=" + height)
-                .toString();
+        return String.format("WindowSettings [width=%s, height=%s]", width, height);
     }
+
+    @Override
+    public WindowSettings clone() {
+        try {
+            return (WindowSettings) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException("Could not clone!", e);
+        }
+    }
+
 }

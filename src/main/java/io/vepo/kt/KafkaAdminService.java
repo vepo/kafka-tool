@@ -28,13 +28,14 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.vepo.kt.settings.KafkaBroker;
+
 public class KafkaAdminService implements Closeable {
     private static final Logger logger = LoggerFactory.getLogger(KafkaAdminService.class);
 
     public enum BrokerStatus {
         IDLE, CONNECTED
     }
-
 
     public interface KafkaConnectionWatcher {
 
@@ -55,10 +56,10 @@ public class KafkaAdminService implements Closeable {
         return status;
     }
 
-    public void connect(String boostraServer, Consumer<BrokerStatus> callback) {
+    public void connect(KafkaBroker kafkaBroker, Consumer<BrokerStatus> callback) {
         executor.submit(() -> {
             var properties = new Properties();
-            properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, boostraServer);
+            properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
             adminClient = AdminClient.create(properties);
             status = BrokerStatus.CONNECTED;
             callback.accept(status);
@@ -76,14 +77,14 @@ public class KafkaAdminService implements Closeable {
             if (nonNull(adminClient)) {
                 logger.info("Describing topic... topic={}", topic);
                 handle(adminClient.describeTopics(asList(topic.getName())).all(),
-                        this::listOffsets,
-                        error -> logger.error("Error describing topic!", error));
+                       this::listOffsets,
+                       error -> logger.error("Error describing topic!", error));
             }
         });
     }
 
     private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
-                                   Consumer<Throwable> errorHandler) {
+            Consumer<Throwable> errorHandler) {
         operation.whenComplete((result, error) -> {
             if (nonNull(error)) {
                 errorHandler.accept(error);
@@ -95,27 +96,27 @@ public class KafkaAdminService implements Closeable {
 
     private void listOffsets(Map<String, TopicDescription> descs) {
         handle(adminClient.listOffsets(descs.values()
-                        .stream()
-                        .flatMap(desc -> desc.partitions()
-                                .stream()
-                                .map(partition -> new TopicPartition(desc.name(),
-                                        partition.partition())))
-                        .collect(Collectors.toMap((TopicPartition t) -> t,
-                                t -> OffsetSpec.latest())))
-                        .all(),
-                this::deleteRecords,
-                error -> logger.error("Could not list offset!", error));
+                                            .stream()
+                                            .flatMap(desc -> desc.partitions()
+                                                                 .stream()
+                                                                 .map(partition -> new TopicPartition(desc.name(),
+                                                                                                      partition.partition())))
+                                            .collect(Collectors.toMap((TopicPartition t) -> t,
+                                                                      t -> OffsetSpec.latest())))
+                          .all(),
+               this::deleteRecords,
+               error -> logger.error("Could not list offset!", error));
     }
 
     private void deleteRecords(Map<TopicPartition, ListOffsetsResultInfo> listOffsetResults) {
         handle(adminClient.deleteRecords(listOffsetResults.entrySet()
-                        .stream()
-                        .collect(toMap(entry -> entry.getKey(),
-                                entry -> beforeOffset(entry.getValue()
-                                        .offset()))))
-                        .all(),
-                KafkaAdminService::ignore,
-                error -> logger.error("Error deleting records!", error));
+                                                          .stream()
+                                                          .collect(toMap(entry -> entry.getKey(),
+                                                                         entry -> beforeOffset(entry.getValue()
+                                                                                                    .offset()))))
+                          .all(),
+               KafkaAdminService::ignore,
+               error -> logger.error("Error deleting records!", error));
     }
 
     private static <T> void ignore(T value) {
@@ -126,16 +127,16 @@ public class KafkaAdminService implements Closeable {
         executor.submit(() -> {
             if (nonNull(adminClient)) {
                 adminClient.listTopics()
-                        .listings()
-                        .whenComplete((topics, error) -> {
-                            if (isNull(error)) {
-                                callback.accept(topics.stream()
-                                        .map(topic -> new TopicInfo(topic.name(), topic.isInternal()))
-                                        .collect(toList()));
-                            } else {
-                                callback.accept(emptyList());
-                            }
-                        });
+                           .listings()
+                           .whenComplete((topics, error) -> {
+                               if (isNull(error)) {
+                                   callback.accept(topics.stream()
+                                                         .map(topic -> new TopicInfo(topic.name(), topic.isInternal()))
+                                                         .collect(toList()));
+                               } else {
+                                   callback.accept(emptyList());
+                               }
+                           });
             } else {
                 callback.accept(emptyList());
             }

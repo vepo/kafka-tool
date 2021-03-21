@@ -1,36 +1,28 @@
 package io.vepo.kt;
 
-import static io.vepo.kt.UiConstants.PADDING;
-import static javafx.scene.layout.GridPane.setColumnSpan;
-import static javafx.scene.layout.GridPane.setVgrow;
+import static io.vepo.kt.ui.ResizePolicy.fixedSize;
+import static io.vepo.kt.ui.ResizePolicy.grow;
+import static java.util.Objects.isNull;
+import static javafx.collections.FXCollections.observableArrayList;
 
 import java.util.Optional;
 
-import io.vepo.kt.KafkaAdminService.BrokerStatus;
-import io.vepo.kt.KafkaAdminService.KafkaConnectionWatcher;
-import io.vepo.kt.settings.KafkaSettings;
+import io.vepo.kt.settings.KafkaBroker;
 import io.vepo.kt.settings.Settings;
-import io.vepo.kt.settings.UiSettings;
-import io.vepo.kt.settings.WindowSettings;
+import io.vepo.kt.ui.ScreenBuilder;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonType;
 import javafx.scene.image.Image;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
 /**
  * Kafka Tool Application
  */
-public class KafkaTool extends Application implements KafkaConnectionWatcher {
+public class KafkaTool extends Application {
 
     public static void main(String[] args) {
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -42,61 +34,10 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
         launch();
     }
 
-    private TextField bootstrapField;
-
-    private Button btnClusterConnect;
     private final KafkaAdminService adminService;
-
-    private GridPane grid;
-    private TopicsView topicsView;
-
-    private TextField schemaRegistryUrlField;
 
     public KafkaTool() {
         adminService = new KafkaAdminService();
-        adminService.watch(this);
-    }
-
-    private void connect() {
-        var boostrapServer = bootstrapField.textProperty().get().trim();
-        adminService.connect(boostrapServer, status -> {
-            if (status == BrokerStatus.CONNECTED) {
-                var kafkaSettings = Settings.kafka();
-                kafkaSettings.bootStrapServers(boostrapServer);
-                kafkaSettings.schemaRegistryUrl(Optional.ofNullable(schemaRegistryUrlField.textProperty()
-                                                                                          .get())
-                                                        .orElse("")
-                                                        .trim());
-                kafkaSettings.save();
-            }
-            updateButton();
-        });
-
-    }
-
-    private TextField addTextField(String title) {
-        int row = grid.getRowCount();
-
-        var textLabel = new Text(title);
-        textLabel.setFont(Font.font("Tahoma", FontWeight.NORMAL, 18));
-        grid.add(textLabel, 0, row);
-
-        TextField textField = new TextField();
-        textField.textProperty().addListener((observable, oldValue, newValue) -> this.updateButton());
-        textField.setMinWidth(256);
-        grid.add(textField, 1, row);
-
-        return textField;
-    }
-
-    private Button addButton(String label, Runnable callback) {
-        int row = grid.getRowCount();
-
-        var btn = new Button(label);
-        btn.setOnAction(e -> callback.run());
-        GridPane.setHgrow(btn, Priority.ALWAYS);
-        grid.add(btn, 1, row);
-        return btn;
     }
 
     @Override
@@ -107,76 +48,121 @@ public class KafkaTool extends Application implements KafkaConnectionWatcher {
         });
 
         stage.setTitle("Kafka Tool");
-        grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
-        grid.setHgap(PADDING);
-        grid.setVgap(PADDING);
-        grid.setPadding(new Insets(25, 25, 25, 25));
+        var gridBuilder = ScreenBuilder.grid();
+        gridBuilder.addText("Servers");
+        var serverCombo = gridBuilder.addComboBox(observableArrayList(Settings.kafka().getBrokers()));
+        serverCombo.setConverter(new StringConverter<KafkaBroker>() {
 
-        bootstrapField = addTextField("Boostrap Servers");
-        schemaRegistryUrlField = addTextField("Schema Registry URL");
-        btnClusterConnect = addButton("Connect", this::connect);
+            @Override
+            public String toString(KafkaBroker broker) {
+                return Optional.ofNullable(broker)
+                               .map(KafkaBroker::getName)
+                               .orElse("Select Kafka Cluster...");
+            }
 
-        topicsView = new TopicsView(adminService);
-        grid.add(topicsView, 0, 3);
-        setColumnSpan(topicsView, 2);
-        setVgrow(topicsView, Priority.ALWAYS);
+            @Override
+            public KafkaBroker fromString(String string) {
+                throw new IllegalStateException("Cannot edit");
+            }
+        });
+        serverCombo.setEditable(false);
 
-        var btnRefreshTopics = new Button("Refresh");
-        btnRefreshTopics.setOnAction(e -> topicsView.update());
-        grid.add(btnRefreshTopics, 0, 4);
-        setColumnSpan(btnRefreshTopics, 2);
+        var btnConfigureServers = gridBuilder.addButton("Config");
+        btnConfigureServers.setOnAction(e -> {
+            var configStage = new BrokerConfigurationStage(stage);
+            configStage.onCloseRequestProperty()
+                       .addListener(__ -> serverCombo.setItems(observableArrayList(Settings.kafka().getBrokers())));
+            configStage.show();
+        });
 
-        var currentSettings = Settings.kafka();
-        this.bootstrapField.textProperty().set(currentSettings.bootStrapServers());
-        this.schemaRegistryUrlField.textProperty().set(currentSettings.schemaRegistryUrl());
-        updateButton();
+        var btnConnect = gridBuilder.newLine().skipCell().addButton("Connect", 2);
+        btnConnect.setDisable(true);
 
-        var mainWindows = Settings.ui().mainWindow();
-        var scene = new Scene(grid, mainWindows.width(), mainWindows.height());
+        serverCombo.valueProperty()
+                   .addListener((obs, oldValue, newValue) -> btnConnect.setDisable(isNull(newValue)));
 
-        stage.setScene(scene);
+        var topicsTable = gridBuilder.newLine()
+                                     .<TopicInfo>newTableView(3)
+                                     .withColumn("Topic")
+                                     .fromProperty("name")
+                                     .notEditable()
+                                     .notResizable()
+                                     .resizePolicy(grow(1))
+                                     .add()
+                                     .withButtons("Actions")
+                                     .button("Empty", topic -> {
+                                         var alert = new Alert(AlertType.CONFIRMATION, "All messages will be lost",
+                                                               ButtonType.OK,
+                                                               ButtonType.CANCEL);
+                                         alert.setTitle("Do you really want to clear the topic?");
+                                         alert.show();
+                                         alert.resultProperty()
+                                              .addListener((obs, oldValue, newValue) -> {
+                                                  if (newValue == ButtonType.OK) {
+                                                      adminService.emptyTopic(topic);
+                                                  }
+                                              });
+                                     })
+                                     .button("Subscribe", topic -> {
+                                         var consumerStage = new TopicSubscribeStage(topic.getName(),
+                                                                                     stage,
+                                                                                     serverCombo.getValue().clone());
+                                         consumerStage.show();
+                                     })
+                                     .resizePolicy(fixedSize(256))
+                                     .add()
+                                     .build();
+
+        btnConnect.setOnAction(e -> adminService.connect(serverCombo.getValue(), status -> {
+            switch (status) {
+                case CONNECTED:
+                    adminService.listTopics(topics -> topicsTable.setItems(observableArrayList(topics)));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unexpected value: " + status);
+            }
+        }));
+//
+//        topicsView = new TopicsView(adminService);
+//        grid.add(topicsView, 0, 3);
+//        setColumnSpan(topicsView, 2);
+//        setVgrow(topicsView, Priority.ALWAYS);
+//
+//        var btnRefreshTopics = new Button("Refresh");
+//        btnRefreshTopics.setOnAction(e -> topicsView.update());
+//        grid.add(btnRefreshTopics, 0, 4);
+//        setColumnSpan(btnRefreshTopics, 2);
+
+//        var currentSettings = Settings.kafka();
+//        this.bootstrapField.textProperty().set(currentSettings.bootStrapServers());
+//        this.schemaRegistryUrlField.textProperty().set(currentSettings.schemaRegistryUrl());
+//        updateButton();
+
+//        var mainWindows = Settings.ui().mainWindow();
+//        var scene = new Scene(gridBuilder.build());// mainWindows.width(), mainWindows.height());
+
+        stage.setScene(gridBuilder.build());
         stage.getIcons().add(new Image(KafkaTool.class.getResourceAsStream("/kafka.png")));
         stage.widthProperty().addListener((obs, oldValue, newValue) -> {
-            topicsView.setPrefWidth(newValue.doubleValue());
-            btnClusterConnect.setPrefWidth(grid.getCellBounds(1, 2).getWidth());
-            btnRefreshTopics.setPrefWidth(newValue.doubleValue());
+//            topicsView.setPrefWidth(newValue.doubleValue());
+//            btnClusterConnect.setPrefWidth(grid.getCellBounds(1, 2).getWidth());
+//            btnRefreshTopics.setPrefWidth(newValue.doubleValue());
 
-            var uiSettings = Settings.ui();
-            uiSettings.mainWindow().width(newValue.intValue());
-            uiSettings.save();
+//            var uiSettings = Settings.ui();
+//            uiSettings.mainWindow().width(newValue.intValue());
+//            uiSettings.save();
         });
-        stage.heightProperty().addListener((obs, oldValue, newValue) -> {
-            var uiSettings = Settings.ui();
-            uiSettings.mainWindow().height(newValue.intValue());
-            uiSettings.save();
-        });
+//        stage.heightProperty().addListener((obs, oldValue, newValue) -> {
+//            var uiSettings = Settings.ui();
+//            uiSettings.mainWindow().height(newValue.intValue());
+//            uiSettings.save();
+//        });
         stage.show();
-    }
-
-    private void updateButton() {
-        statusChanged(this.adminService.getStatus());
     }
 
     @Override
     public void stop() throws Exception {
         this.adminService.close();
-    }
-
-    @Override
-    public void statusChanged(BrokerStatus status) {
-        switch (status) {
-            case IDLE:
-                this.btnClusterConnect.setDisable(Optional.ofNullable(this.bootstrapField.textProperty().get())
-                                                          .orElse("")
-                                                          .isBlank());
-                break;
-            case CONNECTED:
-                this.btnClusterConnect.setDisable(true);
-                break;
-            default:
-                throw new IllegalArgumentException("Unexpected value: " + status);
-        }
     }
 
 }
