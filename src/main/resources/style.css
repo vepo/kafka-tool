@@ -1,0 +1,32 @@
+* {
+	-fx-font-family: Inter, sans-serif;
+	-fx-border-radius: 0;
+}
+
+ClusterConnectPane, WindowHead {
+	-fx-background-color: #8b96a7;
+}
+
+.label {
+	-fx-text-fill: #FFFFFF;
+}
+
+.combo-box, .combo-box-base, .button, .text-field {
+	-fx-background-color: #596475;
+	-fx-text-fill: #FFFFFF;
+	-fx-prompt-text-fill: #FFFFFF;
+}
+
+.button:hover {
+	-fx-background-color: #738196;
+}
+
+.combo-box-base .text, .combo-box-base .list-cell, .combo-box-base .list-view
+	{
+	-fx-fill: #FFFFFF;
+	-fx-background-color: #596475;
+}
+
+.combo-box-base .list-cell:hover {
+	-fx-background-color: #738196;
+}

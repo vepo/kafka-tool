@@ -108,9 +108,10 @@
 				<version>0.0.5</version>
 				<configuration>
 					<options>
-						<option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5555</option>
+					<!-- 	<option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5555</option> -->
 					</options>
-					<mainClass>io.vepo.kt.KafkaTool</mainClass>
+				<!--	<mainClass>io.vepo.kt.KafkaTool</mainClass>-->
+					  <mainClass>io.vepo.kafka.tool.KafkaManagerMainWindow</mainClass>
 				</configuration>
 			</plugin>
 			<plugin>
