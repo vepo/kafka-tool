@@ -5,9 +5,9 @@ import static javafx.application.Platform.runLater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.vepo.kafka.tool.controls.ClusterConnectPane;
 import io.vepo.kafka.tool.controls.MainWindowPane;
 import io.vepo.kafka.tool.controls.WindowHead;
+import io.vepo.kafka.tool.controls.helpers.ResizeHelper;
 import io.vepo.kt.KafkaAdminService;
 import io.vepo.kt.KafkaAdminService.BrokerStatus;
 import javafx.application.Application;
@@ -16,6 +16,7 @@ import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.scene.image.Image;
 import javafx.stage.StageStyle;
 
 public class KafkaManagerMainWindow extends Application {
@@ -36,13 +37,12 @@ public class KafkaManagerMainWindow extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         var main = new MainWindowPane();
-        main.add("Topics", new Text("Topics Pane"));
+        var topicsPane = new TopicsPane(adminService);
+        main.add("Topics", topicsPane);
         main.add("Consumers", new Text("Consumers Pane"));
         stage.initStyle(StageStyle.UNDECORATED);
 
-        BorderPane borderPane = new BorderPane();
-        borderPane.setStyle("-fx-background-color: green;");
-
+        var borderPane = new BorderPane();
         var head = new WindowHead();
         borderPane.setTop(head);
         var clusterConnectPane = new ClusterConnectPane(kafkaCluster -> adminService.connect(kafkaCluster, status -> {
@@ -55,9 +55,17 @@ public class KafkaManagerMainWindow extends Application {
 
         var scene = new Scene(borderPane);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+        stage.getIcons().add(new Image(KafkaManagerMainWindow.class.getResourceAsStream("/kafka.png")));
         stage.setScene(scene);
-        stage.onCloseRequestProperty().addListener(e -> adminService.close());
+        ResizeHelper.addResizeListener(stage);
         stage.show();
+    }
+
+    @Override
+    public void stop() throws Exception {
+        adminService.close();
+        Platform.exit();
+        System.exit(0);
     }
 
 }

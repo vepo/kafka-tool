@@ -46,6 +46,7 @@ public class KafkaAdminService implements Closeable {
     private AdminClient adminClient = null;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private List<KafkaConnectionWatcher> watchers;
+    private KafkaBroker connectedBroker;
 
     public KafkaAdminService() {
         this.watchers = new ArrayList<>();
@@ -58,6 +59,7 @@ public class KafkaAdminService implements Closeable {
 
     public void connect(KafkaBroker kafkaBroker, Consumer<BrokerStatus> callback) {
         executor.submit(() -> {
+            connectedBroker = kafkaBroker;
             var properties = new Properties();
             properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
             adminClient = AdminClient.create(properties);
@@ -69,6 +71,10 @@ public class KafkaAdminService implements Closeable {
 
     public void watch(KafkaConnectionWatcher watcher) {
         this.watchers.add(watcher);
+    }
+    
+    public KafkaBroker connectedBroker() {
+	return connectedBroker.clone();
     }
 
     public void emptyTopic(TopicInfo topic) {
@@ -145,6 +151,8 @@ public class KafkaAdminService implements Closeable {
 
     @Override
     public void close() {
+        logger.info("Closing client...");
+        connectedBroker = null;
         if (nonNull(adminClient)) {
             adminClient.close();
         }

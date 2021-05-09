@@ -1,10 +1,11 @@
-package io.vepo.kafka.tool.controls;
+package io.vepo.kafka.tool;
 
 import static javafx.collections.FXCollections.observableArrayList;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import io.vepo.kafka.tool.controls.CentralizedPane;
 import io.vepo.kt.BrokerConfigurationStage;
 import io.vepo.kt.settings.KafkaBroker;
 import io.vepo.kt.settings.Settings;

@@ -3,7 +3,7 @@
 	-fx-border-radius: 0;
 }
 
-ClusterConnectPane, WindowHead {
+ClusterConnectPane, WindowHead, MainWindowPane {
 	-fx-background-color: #8b96a7;
 }
 
@@ -11,10 +11,23 @@ ClusterConnectPane, WindowHead {
 	-fx-text-fill: #FFFFFF;
 }
 
+TopicsPane .label {
+	-fx-text-fill: #444444;
+}
+
 .combo-box, .combo-box-base, .button, .text-field {
 	-fx-background-color: #596475;
 	-fx-text-fill: #FFFFFF;
 	-fx-prompt-text-fill: #FFFFFF;
+	-fx-background-radius: 0px;
+}
+
+MainWindowPane .button {
+	-fx-background-color: #8b96a7;
+}
+
+MainWindowPane .button.selected {
+	-fx-background-color: #596475;
 }
 
 .button:hover {

@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    volumes:
+      - ./volume/zookeeper/data:/data
+      - ./volume/zookeeper/datalog:/datalog
+     
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - ./volume/kafka1/data:/var/lib/kafka/data

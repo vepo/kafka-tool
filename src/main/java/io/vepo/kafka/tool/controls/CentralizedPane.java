@@ -1,7 +1,5 @@
 package io.vepo.kafka.tool.controls;
 
-import static io.vepo.kafka.tool.controls.UiConstants.IDLE_BACKGROUND;
-
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
@@ -15,7 +13,6 @@ public class CentralizedPane extends Pane {
     private static final Object MARGIN = "MARGIN";
 
     public CentralizedPane() {
-//        setBackground(IDLE_BACKGROUND);
     }
 
     public void add(Node node, double width, double height, Insets margins) {

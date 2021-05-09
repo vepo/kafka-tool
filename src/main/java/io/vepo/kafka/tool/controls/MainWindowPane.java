@@ -1,9 +1,5 @@
 package io.vepo.kafka.tool.controls;
 
-import static io.vepo.kafka.tool.controls.UiConstants.IDLE_BACKGROUND;
-import static io.vepo.kafka.tool.controls.UiConstants.IDLE_FOREGROUND;
-import static io.vepo.kafka.tool.controls.UiConstants.SELECTED_BACKGROUND;
-import static io.vepo.kafka.tool.controls.UiConstants.SELECTED_FOREGROUND;
 import static java.util.stream.Collectors.toList;
 
 import javafx.geometry.HPos;
@@ -21,24 +17,20 @@ public class MainWindowPane extends Pane {
 
     public MainWindowPane() {
         counter = 0;
-//        setBackground(IDLE_BACKGROUND);
     }
 
     public void add(String label, Node viewer) {
         var btn = new Button(label);
         btn.setOnAction(e -> {
             btn.getProperties().put(SELECTED, true);
-            btn.setBackground(SELECTED_BACKGROUND);
-            btn.setTextFill(SELECTED_FOREGROUND);
+            btn.getStyleClass().remove(SELECTED);
+            btn.getStyleClass().add(SELECTED);
             viewer.getProperties().put(SELECTED, true);
             getChildren().stream()
                          .filter(control -> control != btn && control != viewer)
                          .forEach(node -> {
                              node.getProperties().put(SELECTED, false);
-                             if (!(boolean) node.getProperties().get(VIEWER)) {
-                                 ((Button) node).setBackground(IDLE_BACKGROUND);
-                                 ((Button) node).setTextFill(IDLE_FOREGROUND);
-                             }
+                             node.getStyleClass().remove(SELECTED);
                          });
             requestLayout();
         });
@@ -49,11 +41,12 @@ public class MainWindowPane extends Pane {
         viewer.getProperties().put(VIEWER, true);
         viewer.getProperties().put(SELECTED, selected);
 
+        if (selected) {
+            btn.getStyleClass().add(SELECTED);
+        }
         btn.getProperties().put(POSITION, counter++);
         btn.getProperties().put(VIEWER, false);
         btn.getProperties().put(SELECTED, selected);
-        btn.setBackground(selected ? SELECTED_BACKGROUND : IDLE_BACKGROUND);
-        btn.setTextFill(selected ? SELECTED_FOREGROUND : IDLE_FOREGROUND);
         getChildren().addAll(btn, viewer);
     }
 
