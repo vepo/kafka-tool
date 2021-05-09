@@ -67,11 +67,6 @@ public class TopicsPane extends ListView<TopicInfo> {
 		box.getChildren().addAll(textBox, buttonsBox);
 		setGraphic(box);
 		setText(null);
-//		setOnMouseClicked(event -> buttonsBox.getChildrenUnmodifiable().forEach(node -> {
-//		    if (node instanceof Button && node.getLayoutBounds().contains(event.getX(), event.getX())) {
-//			node.fireEvent(event.copyFor(node, node));
-//		    }
-//		}));
 	    } else {
 		setText(null);
 		setGraphic(null);
