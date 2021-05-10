@@ -1,4 +1,4 @@
-package io.vepo.kt.consumers;
+package io.vepo.kafka.tool.consumers;
 
 public class AgnosticConsumerException extends RuntimeException {
 

@@ -1,4 +1,4 @@
-package io.vepo.kt;
+package io.vepo.kafka.tool.inspect;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -28,7 +28,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.vepo.kt.settings.KafkaBroker;
+import io.vepo.kafka.tool.settings.KafkaBroker;
 
 public class KafkaAdminService implements Closeable {
     private static final Logger logger = LoggerFactory.getLogger(KafkaAdminService.class);

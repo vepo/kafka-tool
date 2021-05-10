@@ -6,9 +6,9 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import io.vepo.kafka.tool.controls.CentralizedPane;
-import io.vepo.kt.BrokerConfigurationStage;
-import io.vepo.kt.settings.KafkaBroker;
-import io.vepo.kt.settings.Settings;
+import io.vepo.kafka.tool.settings.KafkaBroker;
+import io.vepo.kafka.tool.settings.Settings;
+import io.vepo.kafka.tool.stages.BrokerConfigurationStage;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;

@@ -1,19 +1,19 @@
-package io.vepo.kt;
+package io.vepo.kafka.tool.stages;
 
-import static io.vepo.kt.ui.ResizePolicy.fixedSize;
-import static io.vepo.kt.ui.ResizePolicy.grow;
+import static io.vepo.kafka.tool.controls.builders.ResizePolicy.fixedSize;
+import static io.vepo.kafka.tool.controls.builders.ResizePolicy.grow;
 import static javafx.collections.FXCollections.observableArrayList;
 
-import io.vepo.kt.settings.KafkaBroker;
-import io.vepo.kt.settings.Settings;
-import io.vepo.kt.settings.WindowSettings;
-import io.vepo.kt.ui.AbstractKtStage;
-import io.vepo.kt.ui.ScreenBuilder;
+import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
+import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
+import io.vepo.kafka.tool.settings.KafkaBroker;
+import io.vepo.kafka.tool.settings.Settings;
+import io.vepo.kafka.tool.settings.WindowSettings;
 import javafx.application.Platform;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Stage;
 
-public class BrokerConfigurationStage extends AbstractKtStage {
+public class BrokerConfigurationStage extends AbstractKafkaToolStage {
 
     public BrokerConfigurationStage(Stage owner) {
         super("kafkaBrokerConfig", owner, true, new WindowSettings(670, 512));

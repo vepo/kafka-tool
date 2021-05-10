@@ -1,4 +1,4 @@
-package io.vepo.kt.settings;
+package io.vepo.kafka.tool.settings;
 
 import java.util.HashMap;
 import java.util.Map;

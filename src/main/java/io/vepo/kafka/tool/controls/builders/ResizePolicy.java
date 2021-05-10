@@ -1,4 +1,4 @@
-package io.vepo.kt.ui;
+package io.vepo.kafka.tool.controls.builders;
 
 import java.util.List;
 import java.util.function.BiConsumer;

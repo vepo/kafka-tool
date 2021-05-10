@@ -1,4 +1,4 @@
-package io.vepo.kt.settings;
+package io.vepo.kafka.tool.settings;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -21,13 +21,11 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.vepo.kt.KafkaTool;
-
 public interface Settings<T extends Settings<?>> {
     static final String KAFKA_SETTINGS_FILE = "kafka-properties.json";
     static final String KAFKA_TOOL_FOLDER = ".kafka-tool";
     static final Path KAFKA_TOOL_CONFIG_PATH = Paths.get(System.getProperty("user.home"), KAFKA_TOOL_FOLDER);
-    static final Logger logger = LoggerFactory.getLogger(KafkaTool.class);
+    static final Logger logger = LoggerFactory.getLogger(Settings.class);
     static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
     static final ExecutorService saveExecutor = Executors.newSingleThreadExecutor();
     static final String UI_SETTINGS_FILE = "ui-properties.json";

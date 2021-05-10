@@ -3,8 +3,13 @@
 	-fx-border-radius: 0;
 }
 
-ClusterConnectPane, WindowHead, MainWindowPane {
+ClusterConnectPane, WindowHead, MainWindowPane, GridPane {
 	-fx-background-color: #8b96a7;
+}
+
+.root {
+	-fx-border-color: #444444;
+	-fx-border-style: solid;	
 }
 
 .label {

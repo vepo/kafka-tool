@@ -5,22 +5,23 @@ import static javafx.collections.FXCollections.observableArrayList;
 
 import java.util.Objects;
 
-import io.vepo.kt.KafkaAdminService;
-import io.vepo.kt.KafkaAdminService.BrokerStatus;
-import io.vepo.kt.TopicInfo;
-import io.vepo.kt.TopicSubscribeStage;
+import io.vepo.kafka.tool.inspect.KafkaAdminService;
+import io.vepo.kafka.tool.inspect.TopicInfo;
+import io.vepo.kafka.tool.inspect.KafkaAdminService.BrokerStatus;
+import io.vepo.kafka.tool.stages.TopicSubscribeStage;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-public class TopicsPane extends ListView<TopicInfo> {
+public class TopicsPane extends VBox {
 
     private class KafkaTopicCell extends ListCell<TopicInfo> {
 
@@ -78,6 +79,7 @@ public class TopicsPane extends ListView<TopicInfo> {
     }
 
     private KafkaAdminService adminService;
+    private ListView<TopicInfo> listView;
 
     public TopicsPane(KafkaAdminService adminService) {
 	super();
@@ -90,15 +92,22 @@ public class TopicsPane extends ListView<TopicInfo> {
 	    }
 	});
 
-	setCellFactory(view -> new KafkaTopicCell());
+	listView = new ListView<>();
+	VBox.setVgrow(listView, Priority.ALWAYS);
+	listView.setCellFactory(view -> new KafkaTopicCell());
+
+	var refreshButton = new Button("Refresh");
+	refreshButton.setMaxWidth(Double.MAX_VALUE);
+	refreshButton.setOnAction(e -> reload());
+	getChildren().addAll(listView, refreshButton);
     }
 
     public void reload() {
-	adminService.listTopics(topics -> runLater(() -> setItems(observableArrayList(topics))));
+	adminService.listTopics(topics -> runLater(() -> listView.setItems(observableArrayList(topics))));
     }
 
     public void clear() {
-	runLater(() -> getItems().clear());
+	runLater(() -> listView.getItems().clear());
     }
 
 }

@@ -1,11 +1,11 @@
-package io.vepo.kt;
+package io.vepo.kafka.tool.stages;
 
-import io.vepo.kt.settings.WindowSettings;
-import io.vepo.kt.ui.AbstractKtStage;
-import io.vepo.kt.ui.ScreenBuilder;
+import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
+import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
+import io.vepo.kafka.tool.settings.WindowSettings;
 import javafx.stage.Stage;
 
-public class MessageViewerStage extends AbstractKtStage {
+public class MessageViewerStage extends AbstractKafkaToolStage {
 
     public MessageViewerStage(String key, String value, Stage owner) {
         super("messageViewer", owner, false, new WindowSettings(512, 512));

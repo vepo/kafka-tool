@@ -1,4 +1,4 @@
-package io.vepo.kt;
+package io.vepo.kafka.tool.controls;
 
 import javafx.scene.layout.HBox;
 import javafx.scene.text.Text;

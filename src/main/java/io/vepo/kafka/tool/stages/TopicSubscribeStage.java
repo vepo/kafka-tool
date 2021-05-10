@@ -1,7 +1,6 @@
-package io.vepo.kt;
+package io.vepo.kafka.tool.stages;
 
-import static io.vepo.kt.UiConstants.PADDING;
-import static io.vepo.kt.ui.ResizePolicy.fixedSize;
+import static io.vepo.kafka.tool.controls.builders.ResizePolicy.fixedSize;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -17,21 +16,23 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.vepo.kt.TopicConsumerStatusBar.Status;
-import io.vepo.kt.consumers.AgnosticConsumerException;
-import io.vepo.kt.consumers.KafkaAgnosticConsumer;
-import io.vepo.kt.settings.KafkaBroker;
-import io.vepo.kt.settings.WindowSettings;
-import io.vepo.kt.ui.AbstractKtStage;
-import io.vepo.kt.ui.ResizePolicy;
-import io.vepo.kt.ui.ScreenBuilder;
+import io.vepo.kafka.tool.consumers.AgnosticConsumerException;
+import io.vepo.kafka.tool.consumers.KafkaAgnosticConsumer;
+import io.vepo.kafka.tool.controls.TopicConsumerStatusBar;
+import io.vepo.kafka.tool.controls.TopicConsumerStatusBar.Status;
+import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
+import io.vepo.kafka.tool.controls.builders.ResizePolicy;
+import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
+import io.vepo.kafka.tool.inspect.KafkaMessage;
+import io.vepo.kafka.tool.settings.KafkaBroker;
+import io.vepo.kafka.tool.settings.WindowSettings;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableView;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
-public class TopicSubscribeStage extends AbstractKtStage {
+public class TopicSubscribeStage extends AbstractKafkaToolStage {
 
     private static final Logger logger = LoggerFactory.getLogger(TopicSubscribeStage.class);
 
@@ -62,8 +63,8 @@ public class TopicSubscribeStage extends AbstractKtStage {
                 selectedConsumer = KafkaAgnosticConsumer.avro();
             } else if ("JSON".equals(newValue)) {
                 selectedConsumer = KafkaAgnosticConsumer.json();
-            } else if ("Plain Text".equals(newValue)) {
-                selectedConsumer = KafkaAgnosticConsumer.plainText();
+            } else if ("Protobuf".equals(newValue)) {
+                selectedConsumer = KafkaAgnosticConsumer.protobuf();
             } else {
                 selectedConsumer = null;
             }
@@ -121,7 +122,7 @@ public class TopicSubscribeStage extends AbstractKtStage {
         messageTable.setDisable(true);
         btnMessagesClear = gridBuilder.newLine().addButton("Clear", 3);
         btnMessagesClear.setOnAction(e -> clearMessages());
-        consumerStatusBar = gridBuilder.newLine().addCustom(new TopicConsumerStatusBar(PADDING), 2);
+        consumerStatusBar = gridBuilder.newLine().addCustom(new TopicConsumerStatusBar(10), 2);
         setScene(gridBuilder.build());
         updateButton();
         setOnCloseRequest(e -> {
