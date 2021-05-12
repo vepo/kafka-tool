@@ -3,6 +3,7 @@ package io.vepo.kafka.tool.controls;
 import static javafx.geometry.Pos.CENTER_RIGHT;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
@@ -71,7 +72,11 @@ public class WindowHead extends HBox {
     }
 
     private void close(ActionEvent e) {
-	((Stage) getScene().getWindow()).close();
+	Stage window = (Stage) getScene().getWindow();
+	if (Objects.nonNull(window.getOnCloseRequest())) {
+	    window.getOnCloseRequest().handle(null);
+	}
+	window.close();
     }
 
 }

@@ -16,21 +16,20 @@ message Complex {
 	Simple simple = 5;
 	enum Corpus {
     	UNIVERSAL = 0;
-	    WEB = 1;
-	    IMAGES = 2;
-	    LOCAL = 3;
-	    NEWS = 4;
-	    PRODUCTS = 5;
-	    VIDEO = 6;
+	    WEB       = 1;
+	    IMAGES    = 2;
+	    LOCAL     = 3;
+	    NEWS      = 4;
+	    PRODUCTS  = 5;
+	    VIDEO     = 6;
   	}
   	Corpus corpus           =  6;
-  	repeated string tags    =  7;	
+  	repeated string tags    =  7;
   	repeated Simple simples =  8;
-  	bool bolleanValue       =  9;
+  	bool booleanValue       =  9;
   	bytes data              = 10;
   	double doubleValue      = 11;
   	repeated Corpus corpusA = 12;
   	float floatValue        = 13;
 	map<string, Simple> map = 14;
-  	
 }

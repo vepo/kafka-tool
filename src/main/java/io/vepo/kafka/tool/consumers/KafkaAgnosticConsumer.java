@@ -18,6 +18,9 @@ import org.apache.avro.generic.GenericData;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.Message;
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
@@ -78,6 +81,7 @@ public interface KafkaAgnosticConsumer {
 
     class JsonKafkaAgnosticConsumer implements KafkaAgnosticConsumer {
 	private AtomicBoolean running;
+	private static final ObjectMapper mapper = new ObjectMapper();
 
 	public JsonKafkaAgnosticConsumer() {
 	    running = new AtomicBoolean(false);
@@ -98,12 +102,17 @@ public interface KafkaAgnosticConsumer {
 	    configProperties.put(VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonDeserializer.class);
 	    configProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
 	    configProperties.put(SCHEMA_REGISTRY_URL_CONFIG, broker.getSchemaRegistryUrl());
-	    try (var consumer = new KafkaConsumer<String, String>(configProperties)) {
+	    try (var consumer = new KafkaConsumer<String, JsonNode>(configProperties)) {
 		consumer.subscribe(asList(topic));
 		while (running.get()) {
-		    consumer.poll(Duration.ofSeconds(1))
-			    .forEach(record -> callback.accept(new MessageMetadata(record.offset()),
-				    new KafkaMessage(record.key(), record.value().trim())));
+		    consumer.poll(Duration.ofSeconds(1)).forEach(record -> {
+			try {
+			    callback.accept(new MessageMetadata(record.offset()),
+				    new KafkaMessage(record.key(), mapper.writeValueAsString(record.value())));
+			} catch (JsonProcessingException e) {
+			    throw new AgnosticConsumerException(e);
+			}
+		    });
 		    try {
 			Thread.sleep(500);
 		    } catch (InterruptedException e) {
