@@ -1,16 +1,16 @@
 # Kafka Tool
 
-A Kafka GUI Client. For the first version it only reads AVRO with Schema Registry
+A Kafka GUI Client. For the first version:
 
+* Configure Brokers
+* Topic listing
+* Subscribe Topic
+    * Formats:
+        * AVRO
+        * JSON
+        * Plain Text
+    * Clear messages
+    * View Message
+* Empty topic
+* Windows Installer
 
-## Dependencies
-
-* Java 18
-
-## Development
-
-To execute:
-
-```bash
-mvn clean javafx:run
-```
