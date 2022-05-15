@@ -6,20 +6,20 @@ import javafx.scene.layout.BorderPane;
 
 public class WindowHelper {
     public static class RootControl extends BorderPane {
-	public RootControl() {
-	    super();
-	}
+        public RootControl() {
+            super();
+        }
 
-	public void setMain(Node main) {
-	    setCenter(main);
-	}
+        public void setMain(Node main) {
+            setCenter(main);
+        }
     }
 
     public static RootControl rootControl() {
-	var main = new RootControl();
-	var head = new WindowHead();
-	main.setTop(head);
-	return main;
+        var main = new RootControl();
+        var head = new WindowHead();
+        main.setTop(head);
+        return main;
     }
 
 }

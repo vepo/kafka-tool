@@ -1,18 +1,19 @@
 package io.vepo.kafka.tool.inspect;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.StringJoiner;
 
 public class KafkaMessage {
-    private final String key;
+    private final byte[] key;
     private final String value;
 
-    public KafkaMessage(String key, String value) {
+    public KafkaMessage(byte[] key, String value) {
         this.key = key;
         this.value = value;
     }
 
-    public String getKey() {
+    public byte[] getKey() {
         return key;
     }
 
@@ -35,9 +36,6 @@ public class KafkaMessage {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", KafkaMessage.class.getSimpleName() + "[", "]")
-                .add("key='" + key + "'")
-                .add("value='" + value + "'")
-                .toString();
+        return String.format("KafkaMessage[key=%s, value=%s]", Arrays.toString(key), value);
     }
 }

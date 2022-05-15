@@ -1,0 +1,70 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//DEPS info.picocli:picocli:4.6.3
+//DEPS org.apache.kafka:kafka-clients:3.2.0
+//SOURCES model/User.java
+//SOURCES serializers/JsonSerializer.java
+
+import java.util.Properties;
+import java.time.LocalDateTime;
+import java.util.concurrent.Callable;
+import java.util.Objects;
+import model.User;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import serializers.JsonSerializer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+@Command(name = "produce-records", mixinStandardHelpOptions = true, version = "produce-record 0.1",
+        description = "")
+public class ProduceRecords implements Callable<Integer> {
+
+    public static void main(String... args) {
+        int exitCode = new CommandLine(new ProduceRecords()).execute(args);
+        System.exit(exitCode);
+    }
+
+    @Override
+    public Integer call() throws Exception {
+        var running = new AtomicBoolean(true);
+        var finished = new CountDownLatch(1);
+         Runtime.getRuntime()
+                .addShutdownHook(new Thread(() -> {
+                    running.set(false);
+                    try {
+                        finished.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }));
+        var props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        try (var producer = new KafkaProducer<Integer, User>(props)) {
+            var counter = new AtomicInteger(0);
+            while (running.get()) {
+                var id = counter.incrementAndGet();
+                producer.send(new ProducerRecord<>("users", id, new User(id, "username-" + id, LocalDateTime.now())),
+                              (metadata, exception) -> {
+                                 if (Objects.nonNull(exception)) {
+                                    exception.printStackTrace();
+                                    return;
+                                 }
+                                 System.out.println("Metadata: topic=" + metadata.topic() +
+                                                         " partition=" + metadata.partition() +
+                                                            " offset=" + metadata.offset() +
+                                                         " timestamp=" + metadata.timestamp());
+                              });
+            }
+        }
+        finished.countDown();
+        return 0;
+    }
+}

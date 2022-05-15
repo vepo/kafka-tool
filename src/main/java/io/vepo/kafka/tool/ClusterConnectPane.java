@@ -9,6 +9,8 @@ import io.vepo.kafka.tool.controls.CentralizedPane;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.Settings;
 import io.vepo.kafka.tool.stages.BrokerConfigurationStage;
+import javafx.beans.value.ChangeListener;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -16,6 +18,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import javafx.util.StringConverter;
 
 public class ClusterConnectPane extends CentralizedPane {
@@ -33,7 +36,14 @@ public class ClusterConnectPane extends CentralizedPane {
         selectPane.add(txtCluster, 0, 0);
 
         var cmbCluster = new ComboBox<KafkaBroker>();
-        cmbCluster.setItems(observableArrayList(Settings.kafka().getBrokers()));
+
+        Runnable updateKafkaOnClustersCombo = () -> {
+            cmbCluster.setItems(observableArrayList(Settings.kafka().getBrokers()));
+            cmbCluster.setDisable(Settings.kafka().getBrokers().size() == 0);
+        };
+
+        updateKafkaOnClustersCombo.run();
+
         cmbCluster.setConverter(new StringConverter<KafkaBroker>() {
 
             @Override
@@ -59,14 +69,14 @@ public class ClusterConnectPane extends CentralizedPane {
         GridPane.setFillWidth(btnConfigure, true);
         btnConfigure.setOnAction(e -> {
             var configStage = new BrokerConfigurationStage((Stage) getScene().getWindow());
-            configStage.onCloseRequestProperty()
-                       .addListener(__ -> cmbCluster.setItems(observableArrayList(Settings.kafka().getBrokers())));
-            configStage.show();
+            configStage.showAndWait();
+            updateKafkaOnClustersCombo.run();
         });
         selectPane.add(btnConfigure, 2, 0);
 
         var btnConnect = new Button("Connect");
         btnConnect.setMaxWidth(Double.MAX_VALUE);
+        btnConnect.disableProperty().bind(cmbCluster.itemsProperty().isNull());
         btnConnect.setOnAction(e -> connectAction.accept(cmbCluster.getValue()));
         GridPane.setFillWidth(btnConnect, true);
         GridPane.setColumnSpan(btnConnect, 2);
