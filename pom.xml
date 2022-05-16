@@ -17,7 +17,7 @@
 		<sonar.projectKey>vepo_kafka-tool</sonar.projectKey>
 		<sonar.organization>vepo-github</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
-		<sonar.exclusions>**/.gitignore, **/.git-keep, src/test/java/io/vepo/kafka/tool/controls/helpers/pojo/*.java</sonar.exclusions>
+		<sonar.exclusions>**/.gitignore, **/.git-keep, src/test/**/*</sonar.exclusions>
 	</properties>
 
 	<repositories>
