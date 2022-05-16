@@ -18,10 +18,12 @@ class SettingsTest {
 
     @BeforeEach
     void setup() throws IOException {
-        Files.walk(Settings.KAFKA_TOOL_CONFIG_PATH)
-             .sorted(Comparator.reverseOrder())
-             .map(Path::toFile)
-             .forEach(File::delete);
+        if (Settings.KAFKA_TOOL_CONFIG_PATH.toFile().exists()) {
+            Files.walk(Settings.KAFKA_TOOL_CONFIG_PATH)
+                 .sorted(Comparator.reverseOrder())
+                 .map(Path::toFile)
+                 .forEach(File::delete);
+        }
     }
 
     @Test
