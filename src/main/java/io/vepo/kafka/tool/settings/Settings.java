@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -70,12 +71,13 @@ public interface Settings<T extends Settings<?>> {
         return loadProperties(SerializerSettings.class, SERIALIZERS_SETTINGS_FILE).orElseGet(SerializerSettings::new);
     }
 
-    public static void updateKafka(Consumer<KafkaSettings> fn) {
+    public static CompletableFuture<KafkaSettings> updateKafka(Consumer<KafkaSettings> fn) {
         saveExecutor.execute(() -> {
             var settings = kafka();
             fn.accept(settings);
             save(KAFKA_SETTINGS_FILE, settings);
         });
+        return CompletableFuture.supplyAsync(Settings::kafka, saveExecutor);
     }
 
     public static void updateUi(Consumer<UiSettings> fn) {

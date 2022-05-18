@@ -1,25 +1,41 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
+//REPOS mavencentral,confluent-packages=https://packages.confluent.io/maven/
 //DEPS info.picocli:picocli:4.6.3
 //DEPS org.apache.kafka:kafka-clients:3.2.0
+//DEPS org.apache.avro:avro:1.11.0
+//DEPS io.confluent:kafka-avro-serializer:7.1.1
 //SOURCES model/User.java
+//SOURCES model/PersonOuterClass.java
 //SOURCES serializers/JsonSerializer.java
+//SOURCES serializers/ProtobufSerializer.java
+//FILES User.json=model/User.json
 
-import java.util.Properties;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+
 import java.time.LocalDateTime;
-import java.util.concurrent.Callable;
 import java.util.Objects;
-import model.User;
-import picocli.CommandLine;
-import picocli.CommandLine.Command;
-import serializers.JsonSerializer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.IntegerSerializer;
+import java.util.Properties;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import java.util.concurrent.atomic.AtomicInteger;
+
+import model.PersonOuterClass.Person;
+import model.User;
+
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+
+import picocli.CommandLine.Command;
+import picocli.CommandLine;
+
+import serializers.JsonSerializer;
+import serializers.ProtobufSerializer;
 
 @Command(name = "produce-records", mixinStandardHelpOptions = true, version = "produce-record 0.1",
         description = "")
@@ -34,37 +50,92 @@ public class ProduceRecords implements Callable<Integer> {
     public Integer call() throws Exception {
         var running = new AtomicBoolean(true);
         var finished = new CountDownLatch(1);
-         Runtime.getRuntime()
-                .addShutdownHook(new Thread(() -> {
-                    running.set(false);
-                    try {
-                        finished.await();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }));
-        var props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        try (var producer = new KafkaProducer<Integer, User>(props)) {
+        Runtime.getRuntime()
+               .addShutdownHook(new Thread(() -> {
+                   running.set(false);
+                   try {
+                       finished.await();
+                   } catch (InterruptedException e) {
+                       Thread.currentThread().interrupt();
+                   }
+               }));
+        try (var jsonProducer = jsonProducer();
+             var protobufProducer = protobufProducer();
+             var avroProducer = avroProducer();) {
+            Schema.Parser parser = new Schema.Parser();
+            Schema schema = parser.parse(User.class.getResourceAsStream("/User.json"));
             var counter = new AtomicInteger(0);
             while (running.get()) {
                 var id = counter.incrementAndGet();
-                producer.send(new ProducerRecord<>("users", id, new User(id, "username-" + id, LocalDateTime.now())),
-                              (metadata, exception) -> {
-                                 if (Objects.nonNull(exception)) {
-                                    exception.printStackTrace();
-                                    return;
-                                 }
-                                 System.out.println("Metadata: topic=" + metadata.topic() +
-                                                         " partition=" + metadata.partition() +
-                                                            " offset=" + metadata.offset() +
-                                                         " timestamp=" + metadata.timestamp());
-                              });
+                jsonProducer.send(new ProducerRecord<>("users", id, new User(id, "username-" + id, LocalDateTime.now())),
+                                  (metadata, exception) -> {
+                                      if (Objects.nonNull(exception)) {
+                                          exception.printStackTrace();
+                                          return;
+                                      }
+                                      System.out.println("Metadata: topic=" + metadata.topic() +
+                                                                 " partition=" + metadata.partition() +
+                                                                 " offset=" + metadata.offset() +
+                                                                 " timestamp=" + metadata.timestamp());
+                                  });
+                protobufProducer.send(new ProducerRecord<>("person", id, Person.newBuilder().
+                                                                               setName("Person " + id)
+                                                                               .setId(id)
+                                                                               .setEmail("person-" + id + "@vepo.io")
+                                                                               .build()),
+                                      (metadata, exception) -> {
+                                          if (Objects.nonNull(exception)) {
+                                              exception.printStackTrace();
+                                              return;
+                                          }
+                                          System.out.println("Metadata: topic=" + metadata.topic() +
+                                                                     " partition=" + metadata.partition() +
+                                                                     " offset=" + metadata.offset() +
+                                                                     " timestamp=" + metadata.timestamp());
+                                      });
+                var avroRecord = new GenericData.Record(schema);
+                avroRecord.put("id", id);
+                avroRecord.put("username", "username-" + id);
+                avroRecord.put("creation", LocalDateTime.now().toString());
+                avroProducer.send(new ProducerRecord<>("user-avro", id, avroRecord),
+                                  (metadata, exception) -> {
+                                      if (Objects.nonNull(exception)) {
+                                          exception.printStackTrace();
+                                          return;
+                                      }
+                                      System.out.println("Metadata: topic=" + metadata.topic() +
+                                                                 " partition=" + metadata.partition() +
+                                                                 " offset=" + metadata.offset() +
+                                                                 " timestamp=" + metadata.timestamp());
+                                  });
             }
         }
         finished.countDown();
         return 0;
+    }
+
+    private static KafkaProducer<Integer, User> jsonProducer() {
+        var props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new KafkaProducer<Integer, User>(props);
+    }
+
+    private static KafkaProducer<Integer, Person> protobufProducer() {
+        var props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ProtobufSerializer.class);
+        return new KafkaProducer<Integer, Person>(props);
+    }
+
+    private static KafkaProducer<Integer, GenericRecord> avroProducer() {
+        var props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
+        props.put("schema.registry.url", "http://localhost:8081");
+        return new KafkaProducer<Integer, GenericRecord>(props);
     }
 }

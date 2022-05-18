@@ -1,16 +1,9 @@
 package io.vepo.kafka.tool;
 
-import static javafx.collections.FXCollections.observableArrayList;
-
-import java.util.Optional;
-import java.util.function.Consumer;
-
 import io.vepo.kafka.tool.controls.CentralizedPane;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.Settings;
 import io.vepo.kafka.tool.stages.BrokerConfigurationStage;
-import javafx.beans.value.ChangeListener;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -18,8 +11,12 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
-import javafx.stage.WindowEvent;
 import javafx.util.StringConverter;
+
+import java.util.Optional;
+import java.util.function.Consumer;
+
+import static javafx.collections.FXCollections.observableArrayList;
 
 public class ClusterConnectPane extends CentralizedPane {
 
@@ -39,7 +36,7 @@ public class ClusterConnectPane extends CentralizedPane {
 
         Runnable updateKafkaOnClustersCombo = () -> {
             cmbCluster.setItems(observableArrayList(Settings.kafka().getBrokers()));
-            cmbCluster.setDisable(Settings.kafka().getBrokers().size() == 0);
+            cmbCluster.setDisable(Settings.kafka().getBrokers().isEmpty());
         };
 
         updateKafkaOnClustersCombo.run();
