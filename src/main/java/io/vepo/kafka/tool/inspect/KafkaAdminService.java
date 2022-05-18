@@ -72,9 +72,9 @@ public class KafkaAdminService implements Closeable {
     public void watch(KafkaConnectionWatcher watcher) {
         this.watchers.add(watcher);
     }
-    
+
     public KafkaBroker connectedBroker() {
-	return connectedBroker.clone();
+        return connectedBroker.clone();
     }
 
     public void emptyTopic(TopicInfo topic) {
@@ -82,15 +82,13 @@ public class KafkaAdminService implements Closeable {
             logger.info("Cleaning topic... topic={}", topic);
             if (nonNull(adminClient)) {
                 logger.info("Describing topic... topic={}", topic);
-                handle(adminClient.describeTopics(asList(topic.getName())).all(),
-                       this::listOffsets,
-                       error -> logger.error("Error describing topic!", error));
+                handle(adminClient.describeTopics(asList(topic.name()))
+                                  .all(), this::listOffsets, error -> logger.error("Error describing topic!", error));
             }
         });
     }
 
-    private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
-            Consumer<Throwable> errorHandler) {
+    private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler, Consumer<Throwable> errorHandler) {
         operation.whenComplete((result, error) -> {
             if (nonNull(error)) {
                 errorHandler.accept(error);
@@ -105,10 +103,8 @@ public class KafkaAdminService implements Closeable {
                                             .stream()
                                             .flatMap(desc -> desc.partitions()
                                                                  .stream()
-                                                                 .map(partition -> new TopicPartition(desc.name(),
-                                                                                                      partition.partition())))
-                                            .collect(Collectors.toMap((TopicPartition t) -> t,
-                                                                      t -> OffsetSpec.latest())))
+                                                                 .map(partition -> new TopicPartition(desc.name(), partition.partition())))
+                                            .collect(Collectors.toMap((TopicPartition t) -> t, t -> OffsetSpec.latest())))
                           .all(),
                this::deleteRecords,
                error -> logger.error("Could not list offset!", error));
@@ -118,10 +114,8 @@ public class KafkaAdminService implements Closeable {
         handle(adminClient.deleteRecords(listOffsetResults.entrySet()
                                                           .stream()
                                                           .collect(toMap(entry -> entry.getKey(),
-                                                                         entry -> beforeOffset(entry.getValue()
-                                                                                                    .offset()))))
-                          .all(),
-               KafkaAdminService::ignore,
+                                                                         entry -> beforeOffset(entry.getValue().offset()))))
+                          .all(), KafkaAdminService::ignore,
                error -> logger.error("Error deleting records!", error));
     }
 
@@ -143,6 +137,24 @@ public class KafkaAdminService implements Closeable {
                                    callback.accept(emptyList());
                                }
                            });
+            } else {
+                callback.accept(emptyList());
+            }
+        });
+    }
+
+    public void listConsumers(Consumer<List<ConsumerGroup>> callback) {
+        executor.submit(() -> {
+            if (nonNull(adminClient)) {
+                adminClient.listConsumerGroups().all().whenComplete((consumers, error) -> {
+                    if (isNull(error)) {
+                        callback.accept(consumers.stream()
+                                                 .map(consumer -> new ConsumerGroup(consumer.groupId()))
+                                                 .toList());
+                    } else {
+                        callback.accept(emptyList());
+                    }
+                });
             } else {
                 callback.accept(emptyList());
             }

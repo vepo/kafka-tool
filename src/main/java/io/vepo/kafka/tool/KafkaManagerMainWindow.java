@@ -24,64 +24,69 @@ public class KafkaManagerMainWindow extends Application {
     private static final Logger logger = LoggerFactory.getLogger(KafkaManagerMainWindow.class);
 
     public static void main(String[] args) {
-	Runtime.getRuntime().addShutdownHook(new Thread() {
-	    @Override
-	    public void run() {
-		Platform.exit();
-	    }
-	});
-	launch();
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                Platform.exit();
+            }
+        });
+        launch();
     }
 
     private KafkaAdminService adminService = new KafkaAdminService();
 
     @Override
     public void start(Stage stage) throws Exception {
-	var main = new MainWindowPane();
-	var topicsPane = new TopicsPane(adminService);
-	main.add("Topics", topicsPane);
-	main.add("Consumers", new Text("Consumers Pane"));
-	stage.initStyle(StageStyle.UNDECORATED);
+        var main = new MainWindowPane();
+        var topicsPane = new TopicsPane(adminService);
+        var consumersPane = new ConsumersPane(adminService);
+        main.add("Topics", topicsPane);
+        main.add("Consumers", consumersPane);
+        stage.initStyle(StageStyle.UNDECORATED);
 
-	AbstractKafkaToolStage.setup(stage);
+        AbstractKafkaToolStage.setup(stage);
 
-	var root = WindowHelper.rootControl();
-	var clusterConnectPane = new ClusterConnectPane(kafkaCluster -> adminService.connect(kafkaCluster, status -> {
-	    logger.info("Connected? status={}", status);
-	    if (status == BrokerStatus.CONNECTED) {
-		runLater(() -> {
-		    stage.setTitle("Kafka Tool - Connected: " + kafkaCluster.getName());
-		    root.setMain(main);
-		});
-	    }
-	}));
-	root.setMain(clusterConnectPane);
-	stage.setMinWidth(560);
-	stage.setMinHeight(360);
-	stage.setTitle("Kafka Tool");
+        var root = WindowHelper.rootControl();
+        var clusterConnectPane = new ClusterConnectPane(kafkaCluster -> adminService.connect(kafkaCluster, status -> {
+            logger.info("Connected? status={}", status);
+            if (status == BrokerStatus.CONNECTED) {
+                runLater(() -> {
+                    stage.setTitle("Kafka Tool - Connected: " + kafkaCluster.getName());
+                    root.setMain(main);
+                });
+            }
+        }));
+        root.setMain(clusterConnectPane);
+        stage.setMinWidth(560);
+        stage.setMinHeight(360);
+        stage.setTitle("Kafka Tool");
 
-	var scene = new Scene(root, Settings.ui().getMainWindow().getWidth(),
-		Settings.ui().getMainWindow().getHeight());
-	stage.setScene(scene);
-	setupUi(stage, scene);
-	ResizeHelper.addResizeListener(stage);
-	stage.show();
+        var scene = new Scene(root, Settings.ui().getMainWindow().getWidth(),
+                              Settings.ui().getMainWindow().getHeight());
+        stage.setScene(scene);
+        setupUi(stage, scene);
+        ResizeHelper.addResizeListener(stage);
+        stage.show();
     }
 
     private void setupUi(Stage stage, Scene scene) {
-	scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-	stage.getIcons().add(new Image(KafkaManagerMainWindow.class.getResourceAsStream("/kafka.png")));
-	stage.widthProperty().addListener((obs, oldValue, newValue) -> Settings
-		.updateUi(ui -> ui.getMainWindow().setWidth((int) stage.getScene().widthProperty().get())));
-	stage.heightProperty().addListener((obs, oldValue, newValue) -> Settings
-		.updateUi(ui -> ui.getMainWindow().setHeight((int) stage.getScene().heightProperty().get())));
+        scene.getStylesheets()
+             .add(getClass().getResource("/style.css").toExternalForm());
+        stage.getIcons()
+             .add(new Image(KafkaManagerMainWindow.class.getResourceAsStream("/kafka.png")));
+        stage.widthProperty()
+             .addListener((obs, oldValue, newValue) -> Settings
+                     .updateUi(ui -> ui.getMainWindow().setWidth((int) stage.getScene().widthProperty().get())));
+        stage.heightProperty()
+             .addListener((obs, oldValue, newValue) -> Settings
+                     .updateUi(ui -> ui.getMainWindow().setHeight((int) stage.getScene().heightProperty().get())));
     }
 
     @Override
     public void stop() throws Exception {
-	adminService.close();
-	Platform.exit();
-	System.exit(0);
+        adminService.close();
+        Platform.exit();
+        System.exit(0);
     }
 
 }

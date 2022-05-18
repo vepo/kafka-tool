@@ -16,6 +16,7 @@ ClusterConnectPane, WindowHead, MainWindowPane, GridPane {
 	-fx-text-fill: #FFFFFF;
 }
 
+ConsumersPane .label,
 TopicsPane .label {
 	-fx-text-fill: #444444;
 }
