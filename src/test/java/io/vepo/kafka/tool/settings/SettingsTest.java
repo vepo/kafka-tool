@@ -30,8 +30,7 @@ class SettingsTest {
     void loadTest() throws InterruptedException {
         assertTrue(Settings.kafka().getBrokers().isEmpty());
         Settings.updateKafka(kafkaSettings -> kafkaSettings.getBrokers()
-                                                           .add(new KafkaBroker("Local", "localhost:9092", "http://localhost:8080")));
-        Thread.sleep(500);
-        assertFalse(Settings.kafka().getBrokers().isEmpty());
+                                                           .add(new KafkaBroker("Local", "localhost:9092", "http://localhost:8080")))
+                .thenAccept(kafka -> assertFalse(kafka.getBrokers().isEmpty()));
     }
 }

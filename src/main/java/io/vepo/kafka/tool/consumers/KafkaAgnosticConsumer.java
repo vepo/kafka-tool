@@ -1,7 +1,6 @@
 package io.vepo.kafka.tool.consumers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.Message;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
@@ -18,7 +17,6 @@ import org.apache.kafka.common.serialization.Deserializer;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,7 +35,7 @@ public interface KafkaAgnosticConsumer {
         private final Function<R, String> mapper;
         private AtomicBoolean running;
 
-        public AbstractKafkaAgnosticConsumer(Class<T> deserializerClass, Function<R, String> mapper) {
+        protected AbstractKafkaAgnosticConsumer(Class<T> deserializerClass, Function<R, String> mapper) {
             this.deserializerClass = deserializerClass;
             this.mapper = mapper;
             running = new AtomicBoolean(false);
@@ -84,11 +82,11 @@ public interface KafkaAgnosticConsumer {
         }
     }
 
-    class JsonKafkaAgnosticConsumer extends AbstractKafkaAgnosticConsumer<LinkedHashMap, KafkaJsonDeserializer> {
+    class JsonKafkaAgnosticConsumer extends AbstractKafkaAgnosticConsumer<LinkedHashMap<String, Object>, KafkaJsonDeserializer> {
 
         private static final ObjectMapper mapper = new ObjectMapper();
 
-        private static String JsonNode2String(LinkedHashMap node) {
+        private static String jsonNode2String(LinkedHashMap<String, Object> node) {
             try {
                 return mapper.writeValueAsString(node);
             } catch (JsonProcessingException e) {
@@ -97,7 +95,7 @@ public interface KafkaAgnosticConsumer {
         }
 
         public JsonKafkaAgnosticConsumer() {
-            super(KafkaJsonDeserializer.class, JsonKafkaAgnosticConsumer::JsonNode2String);
+            super(KafkaJsonDeserializer.class, JsonKafkaAgnosticConsumer::jsonNode2String);
         }
     }
 
