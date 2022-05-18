@@ -14,6 +14,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,20 @@ public interface Settings<T extends Settings<?>> {
         return loadProperties(KafkaSettings.class, KafkaSettings.KAFKA_SETTINGS_FILE).orElseGet(KafkaSettings::new);
     }
 
+    @FunctionalInterface
+    interface IoSupplier<V> {
+        V get() throws IOException;
+    }
+
+    static <V> Optional<V> handleIoException(IoSupplier<V> fn) {
+        try {
+            return Optional.ofNullable(fn.get());
+        } catch (IOException e) {
+            logger.error("Error reading file!", e);
+            return Optional.empty();
+        }
+    }
+
     static <T> Optional<T> loadProperties(Class<T> clz, String filename) {
         if (!KAFKA_TOOL_CONFIG_PATH.toFile().exists()) {
             KAFKA_TOOL_CONFIG_PATH.toFile().mkdir();
@@ -42,7 +57,10 @@ public interface Settings<T extends Settings<?>> {
         var propertiesPath = KAFKA_TOOL_CONFIG_PATH.resolve(filename);
         if (propertiesPath.toFile().exists()) {
             try (var reader = Files.newBufferedReader(propertiesPath)) {
-                return Optional.of(mapper.readValue(reader.lines().collect(joining()), clz));
+                return Optional.of(reader.lines()
+                                         .collect(joining()))
+                               .filter(Predicate.not(String::isBlank))
+                               .flatMap(value -> handleIoException(() -> mapper.readValue(value, clz)));
             } catch (IOException e) {
                 logger.error("Error reading file!", e);
             }
