@@ -71,4 +71,8 @@ public class KafkaBroker implements Cloneable {
             throw new RuntimeException("Cloud not clone!", e);
         }
     }
+
+    public boolean hasSchemaRegistry() {
+        return Objects.nonNull(this.schemaRegistryUrl) && !this.schemaRegistryUrl.isBlank();
+    }
 }

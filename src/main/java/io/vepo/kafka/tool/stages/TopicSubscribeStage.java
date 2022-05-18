@@ -8,12 +8,14 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static javafx.application.Platform.runLater;
 import static javafx.collections.FXCollections.observableList;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import io.vepo.kafka.tool.settings.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,7 +139,7 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
                         });
         gridBuilder.newLine()
                    .addText("Value Serializer");
-        cmbValueSerializer = gridBuilder.addComboBox(observableList(asList(ValueSerializer.AVRO, ValueSerializer.JSON, ValueSerializer.PROTOBUF)), 2);
+        cmbValueSerializer = gridBuilder.addComboBox(observableList(valueSerializers()), 2);
         serializers().getUsedValueSerializer()
                      .computeIfPresent(topic, (key, value) -> {
                          cmbValueSerializer.setValue(value);
@@ -180,7 +182,7 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
                                   .resizePolicy(fixedSize(128))
                                   .add()
                                   .withColumn("Message")
-                                  .fromProperty("message")
+                                  .fromProperty("value")
                                   .resizable()
                                   .notEditable()
                                   .notReorderable()
@@ -216,6 +218,15 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
                 Thread.currentThread().interrupt();
             }
         });
+    }
+
+    @NotNull
+    private List<ValueSerializer> valueSerializers() {
+        if (this.broker.hasSchemaRegistry()) {
+            return asList(ValueSerializer.AVRO, ValueSerializer.JSON, ValueSerializer.PROTOBUF);
+        } else {
+            return asList(ValueSerializer.JSON);
+        }
     }
 
     private void clearMessages() {
