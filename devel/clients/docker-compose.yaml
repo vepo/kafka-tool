@@ -1,0 +1,16 @@
+version: '3'
+services:
+  producer-0:
+    image: jbangdev/jbang-action
+    container_name: producer-0
+    hostname: producer-0
+    volumes:
+      - ./sources:/sources 
+      - ./cache:/jbang/.jbang/cache
+      - ./m2:/root/.m2
+    command: --verbose /sources/AvroProducer.java
+    networks:
+      - kafka-cluster
+networks:
+  kafka-cluster:
+    external: true

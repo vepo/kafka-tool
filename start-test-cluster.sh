@@ -2,4 +2,4 @@
 
 echo "Starting Kafka cluster using docker..."
 
-(cd docker && docker-compose up -d)
+(cd devel/cluster && docker-compose up -d)

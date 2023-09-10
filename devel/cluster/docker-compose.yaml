@@ -18,6 +18,8 @@ services:
       #KAFKA_CONTROL_PLANE_LISTENER_NAME: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-0:9094,2@kafka-1:9097,3@kafka-2:9100
+    networks:
+      - kafka-cluster
   kafka-1:
     image: vepo/kafka:3
     container_name: kafka-1
@@ -36,6 +38,8 @@ services:
       #KAFKA_CONTROL_PLANE_LISTENER_NAME: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-0:9094,2@kafka-1:9097,3@kafka-2:9100
+    networks:
+      - kafka-cluster
   kafka-2:
     image: vepo/kafka:3
     container_name: kafka-2
@@ -54,3 +58,21 @@ services:
       #KAFKA_CONTROL_PLANE_LISTENER_NAME: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-0:9094,2@kafka-1:9097,3@kafka-2:9100
+    networks:
+      - kafka-cluster
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: schema-registry
+    hostname: schema-registry
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka-0:9092,kafka-1:9095,kafka-2:9098"
+      SCHEMA_REGISTRY_LISTENERS: "http://schema-registry:8081"
+    networks:
+      - kafka-cluster
+networks:
+  kafka-cluster:
+    driver: bridge
+    name: kafka-cluster
