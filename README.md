@@ -16,3 +16,9 @@ A Kafka GUI Client. For the first version:
 * Empty topic
 * Windows Installer
 
+## Development
+
+```bash
+./start-test-cluster.sh
+mvn clean compile javafx:run
+```
