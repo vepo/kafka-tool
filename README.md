@@ -22,3 +22,6 @@ A Kafka GUI Client. For the first version:
 ./start-test-cluster.sh
 mvn clean compile javafx:run
 ```
+
+
+// https://app.moqups.com/ZOtwAtbxvpM52PyU8U4nRPsXeVoBukEi/view/page/a18c773d3
