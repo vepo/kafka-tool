@@ -1,8 +1,8 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>dev.vepo</groupId>
         <artifactId>kafka-tool</artifactId>
@@ -10,10 +10,7 @@
     </parent>
     <artifactId>kafka-tool-web</artifactId>
     <version>0.0.2</version>
-    <packaging>jar</packaging>
     <name>Kafka Tool :: WEB</name>
-
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -26,46 +23,43 @@
             <dependency>
                 <groupId>com.vaadin</groupId>
                 <artifactId>vaadin-bom</artifactId>
+                <version>${vaadin.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-                <version>${vaadin.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <dependencies>
-        <!-- The Vaadin Quarkus extension -->
         <dependency>
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-quarkus-extension</artifactId>
             <version>${vaadin.version}</version>
         </dependency>
-
-        <!-- The jandex.idx for Vaadin-core annotation indexes
-         automatically included via vaadin-quarkus-extension
-         and is used as an offline reflection library.
-
-         If you want to work with Pro components such GridPro,
-         you can uncomment the following dependency to include the
-         officially provided jandex.idx for them as well: -->
-        <!--
-    <dependency>
-        <groupId>com.vaadin</groupId>
-        <artifactId>vaadin-jandex</artifactId>
-    </dependency>
-    -->
-
         <dependency>
             <groupId>org.jboss.slf4j</groupId>
             <artifactId>slf4j-jboss-logmanager</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-h2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin-jandex</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>kafka-tool-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-hibernate-orm-panache</artifactId>
+        </dependency>
     </dependencies>
-
     <build>
         <finalName>kafka-tool-web</finalName>
         <plugins>
-            <!-- For in-depth information on quarkus-maven-plugin
-            see https://quarkus.io/guides/maven-tooling#build-tool-maven -->
             <plugin>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
@@ -74,10 +68,7 @@
                 <executions>
                     <execution>
                         <goals>
-                            <!-- Builds the Quarkus application -->
                             <goal>build</goal>
-                            <!-- in these goals the Quarkus application bootstrap
-                            is initialized and re-used in the build goal -->
                             <goal>generate-code</goal>
                             <goal>generate-code-tests</goal>
                         </goals>
