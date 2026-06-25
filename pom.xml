@@ -7,12 +7,21 @@
 	<version>0.0.2</version>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>18</maven.compiler.source>
-		<maven.compiler.target>18</maven.compiler.target>
+		<maven.compiler.release>25</maven.compiler.release>
 
-        <junit.jupiter.version>5.8.2</junit.jupiter.version>
-        <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
-        <confluent.version>7.1.1</confluent.version>
+        <javafx.version>25.0.3</javafx.version>
+        <jackson.version>2.22.0</jackson.version>
+        <kafka.version>4.3.0</kafka.version>
+        <confluent.version>8.3.0</confluent.version>
+        <slf4j.version>2.0.17</slf4j.version>
+        <logback.version>1.5.35</logback.version>
+        <junit.jupiter.version>5.14.4</junit.jupiter.version>
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
+        <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
+        <javafx-maven-plugin.version>0.0.8</javafx-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+        <protoc-jar-maven-plugin.version>3.11.4</protoc-jar-maven-plugin.version>
 
         <sonar.projectKey>vepo_kafka-tool</sonar.projectKey>
         <sonar.organization>vepo-github</sonar.organization>
@@ -34,17 +43,17 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>19-ea+6</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.13.2.2</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
-            <version>3.2.0</version>
+            <version>${kafka.version}</version>
         </dependency>
         <dependency>
             <groupId>io.confluent</groupId>
@@ -69,12 +78,12 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.0-alpha7</version>
+            <version>${slf4j.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.3.0-alpha15</version>
+            <version>${logback.version}</version>
         </dependency>
 
         <dependency>
@@ -90,12 +99,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.0</version>
+                <version>${maven-compiler-plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.10</version>
+                <version>${maven-dependency-plugin.version}</version>
                 <configuration>
                     <outputDirectory>${project.build.directory}/libs</outputDirectory>
                 </configuration>
@@ -118,6 +127,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -129,7 +139,7 @@
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
-                <version>0.0.5</version>
+                <version>${javafx-maven-plugin.version}</version>
                 <configuration>
                     <options>
                         <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5555</option>
@@ -142,7 +152,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>io.vepo.kt.KafkaTool</mainClass>
+                            <mainClass>io.vepo.kafka.tool.KafkaManagerMainWindow</mainClass>
                         </manifest>
                     </archive>
                     <finalName>kafka-tool-full</finalName>
@@ -187,7 +197,7 @@
                     </addmodules>
                     <verbose>true</verbose>
                     <input>target</input>
-                    <mainclass>io.vepo.kt.KafkaTool</mainclass>
+                    <mainclass>io.vepo.kafka.tool.KafkaManagerMainWindow</mainclass>
                     <mainjar>kafka-tool.jar</mainjar>
                     <winmenu>true</winmenu>
                     <appversion>${project.version}</appversion>
@@ -202,7 +212,7 @@
             <plugin>
                 <groupId>com.github.os72</groupId>
                 <artifactId>protoc-jar-maven-plugin</artifactId>
-                <version>3.11.4</version>
+                <version>${protoc-jar-maven-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>generate-test-sources</phase>
@@ -221,7 +231,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.8</version>
+                <version>${jacoco-maven-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>

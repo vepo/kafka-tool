@@ -1,0 +1,69 @@
+---
+description: Java coding standards and quality rules for kafka-tool
+globs: "**/*.java"
+alwaysApply: false
+---
+
+# Java Code Quality — Kafka Tool
+
+## Style and conventions
+
+- Match existing code: tabs for indentation in this project, `var` where type is obvious, static imports for constants.
+- Keep classes focused; prefer extending existing abstractions (`AbstractKafkaToolStage`, `KafkaAgnosticConsumer`, `ScreenBuilder`) over new parallel patterns.
+- Use SLF4J for logging (`LoggerFactory.getLogger`); no `System.out.println` in production code.
+- Prefer immutable DTOs in `inspect/` (`TopicInfo`, `KafkaMessage`); mutable state belongs in services or JavaFX nodes.
+
+## Layer boundaries
+
+```java
+// ❌ BAD — Kafka client in UI stage
+var consumer = new KafkaConsumer<>(props);
+
+// ✅ GOOD — delegate to consumers/ or inspect/
+KafkaAgnosticConsumer.json().start(broker, topic, callback);
+adminService.listTopics(topics -> Platform.runLater(() -> listView.getItems().setAll(topics)));
+```
+
+- `inspect/` and `consumers/` must not import `javafx.*`.
+- UI code must not construct `AdminClient` or `KafkaConsumer` directly.
+- Settings changes go through `Settings.update*` methods only.
+
+## JavaFX thread safety
+
+```java
+// ❌ BAD — UI update from executor/Kafka thread
+messageTable.getItems().add(message);
+
+// ✅ GOOD
+Platform.runLater(() -> messageTable.getItems().add(message));
+```
+
+## Error handling
+
+- Catch specific exceptions; log with context (topic name, broker, operation).
+- Wrap irrecoverable consumer errors in `AgnosticConsumerException`.
+- Do not swallow exceptions silently; at minimum log at ERROR level.
+- Surface user-visible failures with JavaFX `Alert`, not stack traces in UI.
+
+## Kafka API usage
+
+- Use Kafka 4.x APIs: `DescribeTopicsResult.allTopicNames()`, not removed `all()`.
+- Keep Confluent serializer config (`SCHEMA_REGISTRY_URL_CONFIG`) wired from `KafkaBroker`.
+- Blocking poll loops belong on a dedicated executor, never the FX thread.
+
+## Tests
+
+- Add unit tests for new logic in `settings/`, `consumers/`, `inspect/`, `controls/helpers/`.
+- Use JUnit 5 (`@DisplayName`, descriptive test names).
+- Tests must not depend on a running Kafka broker unless explicitly an integration test (none exist today).
+- Clean up `~/.kafka-tool/` in settings tests (see `SettingsTest`).
+
+## Dependencies
+
+- Bump library versions in `pom.xml` `<properties>` only; keep `kafka.version` and `confluent.version` compatible.
+- Do not add dependencies without a clear use in the layer that needs them.
+
+## Before finishing
+
+- Run `mvn verify` and fix compilation/test failures.
+- Avoid deprecated APIs; resolve compiler `-Xlint:deprecation` warnings when touching affected code.

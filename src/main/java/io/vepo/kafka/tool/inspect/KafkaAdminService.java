@@ -82,7 +82,7 @@ public class KafkaAdminService implements Closeable {
             logger.info("Cleaning topic... topic={}", topic);
             if (nonNull(adminClient)) {
                 logger.info("Describing topic... topic={}", topic);
-                handle(adminClient.describeTopics(asList(topic.getName())).all(),
+                handle(adminClient.describeTopics(asList(topic.getName())).allTopicNames(),
                        this::listOffsets,
                        error -> logger.error("Error describing topic!", error));
             }
