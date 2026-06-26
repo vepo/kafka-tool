@@ -32,7 +32,7 @@ try (var env = feature("Kafka broker validation")
 
 ### Integration scenario (Kafka + Schema Registry)
 
-Requires `./scripts/setup-local-env.sh up` and `-Dkafka.integration=true`.
+Requires `-Dkafka.integration=true`. Testcontainers starts Kafka + Schema Registry automatically (`KafkaTestEnvironment`).
 
 ```java
 try (var env = feature("Consume records")

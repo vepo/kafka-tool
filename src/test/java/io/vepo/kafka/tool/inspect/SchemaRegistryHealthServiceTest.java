@@ -23,4 +23,12 @@ class SchemaRegistryHealthServiceTest {
         }
     }
 
+    @Test
+    void nullUrlIsNotConfigured() throws Throwable {
+        try (var env = feature("Schema Registry health").scenario("Null URL is not configured").start()) {
+            env.then("status is not configured",
+                     () -> assertEquals("Not configured", SchemaRegistryHealthService.statusForUrl(null)));
+        }
+    }
+
 }

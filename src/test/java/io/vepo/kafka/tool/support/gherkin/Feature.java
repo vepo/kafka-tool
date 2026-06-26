@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 import org.opentest4j.TestAbortedException;
 
 import io.vepo.kafka.tool.settings.KafkaBroker;
+import io.vepo.kafka.tool.support.KafkaTestEnvironment;
 
 public final class Feature {
     public static final class FeatureBuilder {
@@ -37,9 +38,8 @@ public final class Feature {
 
             KafkaBroker broker = null;
             if (kafkaBrokerEnabled) {
-                broker = new KafkaBroker("test", bootstrapServers,
-                                         schemaRegistryEnabled ? schemaRegistryUrl : "");
-                KafkaEnvironment.requireReachable(broker);
+                KafkaEnvironment.requireIntegrationEnabled();
+                broker = KafkaTestEnvironment.brokerProfile(schemaRegistryEnabled);
             }
 
             return new ScenarioEnvironment(featureName, scenarioName, broker);
@@ -69,14 +69,11 @@ public final class Feature {
     }
 
     static final class KafkaEnvironment {
-        static void requireReachable(KafkaBroker broker) {
+        static void requireIntegrationEnabled() {
             if (!Boolean.parseBoolean(System.getProperty("kafka.integration", "false"))) {
                 throw new TestAbortedException(
-                                               "Integration scenario skipped. Re-run with -Dkafka.integration=true and "
-                                                       + "./scripts/setup-local-env.sh up");
+                                               "Integration scenario skipped. Re-run with -Dkafka.integration=true (Testcontainers).");
             }
-            // Connectivity is validated by the scenario; broker profile is ready for
-            // clients.
         }
 
         private KafkaEnvironment() {}

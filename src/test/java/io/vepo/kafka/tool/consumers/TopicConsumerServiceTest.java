@@ -1,7 +1,7 @@
 package io.vepo.kafka.tool.consumers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -34,21 +34,9 @@ class TopicConsumerServiceTest {
     }
 
     @Test
-    void consumerForAvro() {
+    void isNotRunningInitially() {
         var service = new TopicConsumerService();
-        assertTrue(service.consumerFor(ValueSerializer.AVRO) instanceof KafkaAgnosticConsumer);
-    }
-
-    @Test
-    void consumerForPlainText() {
-        var service = new TopicConsumerService();
-        assertTrue(service.consumerFor(ValueSerializer.PLAIN_TEXT) instanceof KafkaAgnosticConsumer);
-    }
-
-    @Test
-    void consumerForUnknownReturnsNull() {
-        var service = new TopicConsumerService();
-        assertNull(service.consumerFor(null));
+        assertFalse(service.isRunning());
     }
 
 }

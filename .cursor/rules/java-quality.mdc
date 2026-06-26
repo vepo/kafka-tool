@@ -12,6 +12,7 @@ alwaysApply: false
 - Keep classes focused; prefer extending existing abstractions (`AbstractKafkaToolStage`, `KafkaAgnosticConsumer`, **`UI`**) over new parallel patterns.
 - Use SLF4J for logging (`LoggerFactory.getLogger`); no `System.out.println` in production code.
 - Mutable state belongs in services or JavaFX nodes; immutable data carriers belong in `inspect/` and `viewmodels/`.
+- Follow `.cursor/rules/ddd-domain.mdc`: domain nouns from `docs/DOMAIN.md`, no new `*Helper`/`*Util` types, behaviour on the owning object.
 
 ### Imports
 
@@ -50,15 +51,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 assertTrue(result.valid());
 ```
 
-### Records
+### Immutability and records
 
-- Prefer `record` for immutable data carriers (DTOs, results, config snapshots) over classes with getters only.
-- Use a class when you need mutable state, inheritance, or non-trivial lifecycle behaviour.
-
-```java
-// ✅ GOOD
-public record ConnectionResult(boolean success, String message, BrokerStatus status) {}
-```
+- Follow `.cursor/rules/immutability.mdc`: immutable by default, `record` over getter-only POJOs.
 
 ### Tell, Don't Ask
 
@@ -138,7 +133,7 @@ Platform.runLater(() -> messageTable.getItems().add(message));
 ## Tests
 
 - Follow `.cursor/rules/tdd-gherkin.mdc`: every feature ships with a Gherkin-style scenario using `Feature.feature(...).scenario(...).start()` in try-with-resources.
-- Add unit tests for new logic in `settings/`, `consumers/`, `inspect/`, `controls/helpers/`.
+- Add unit tests for new logic in `settings/`, `consumers/`, `inspect/`, and extracted domain/UI logic (not raw JavaFX stages).
 - Use JUnit 5; one `@Test` method = one Scenario.
 - Tests must not depend on a running Kafka broker unless tagged `@Tag("integration")`.
 - Clean up `~/.kafka-tool/` in settings tests (see `SettingsTest`).

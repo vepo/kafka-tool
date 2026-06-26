@@ -1,0 +1,69 @@
+---
+description: Immutability by default — prefer Java records over mutable or getter-only POJOs
+alwaysApply: true
+---
+
+# Immutability by Default — Kafka Tool
+
+## Default
+
+New **data carriers** (DTOs, snapshots, results, value objects) are **immutable** and declared as **`record`** unless a documented exception applies.
+
+Do not add getter-only POJOs (`private final` fields + getters + hand-written `equals`/`hashCode`/`toString`) when a `record` suffices.
+
+## Use `record`
+
+- Inspect DTOs and cluster snapshots (`inspect/`)
+- View-model row data (`viewmodels/`)
+- Read-only settings value types
+- Method results that bundle multiple values
+
+```java
+// ❌ BAD — POJO boilerplate for a passive data carrier
+public final class TopicInfo {
+    private final String name;
+    private final boolean internal;
+    // getters, equals, hashCode, toString …
+}
+
+// ✅ GOOD
+public record TopicInfo(String name, boolean internal) {}
+```
+
+## When a class is allowed
+
+Use a **`final` class** (not a record) only when you need:
+
+| Need | Example |
+|------|---------|
+| Mutable lifecycle or cached state | `KafkaAdminService`, JavaFX controllers |
+| Inheritance or framework contract | `AbstractKafkaToolStage` |
+| Defensive copies or validation at construction | Clone `byte[]` in a compact constructor |
+| Behaviour that owns I/O, threads, or UI | Services in `inspect/`, `consumers/` |
+
+For validated or defensive-copy fields, prefer a **record with a compact constructor**:
+
+```java
+public record KafkaMessage(byte[] key, String value) {
+    public KafkaMessage {
+        key = key == null ? null : key.clone();
+    }
+}
+```
+
+## Mutability rules
+
+- **No setters** on value types; build new instances when transforming snapshots.
+- **Collections** — store `List.copyOf` / `Map.copyOf` / `Set.copyOf`; never expose mutable collections from records.
+- **`byte[]`** — clone on construction and when returning from accessors.
+- **Services and UI** — mutable state belongs in services, executors, and JavaFX nodes; not in DTOs passed between layers.
+
+## Refactoring
+
+When touching an existing getter-only POJO, convert it to a `record` if the change is localized and tests cover behaviour. Do not drive-by-convert unrelated types.
+
+## Checklist
+
+- [ ] New data carrier is a `record` (or a justified `final` class)
+- [ ] No setters on domain/value types
+- [ ] Collections and `byte[]` defensively copied or frozen

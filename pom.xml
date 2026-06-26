@@ -16,6 +16,8 @@
         <slf4j.version>2.0.17</slf4j.version>
         <logback.version>1.5.35</logback.version>
         <junit.jupiter.version>5.14.4</junit.jupiter.version>
+        <testcontainers.version>1.20.6</testcontainers.version>
+        <surefire.excludeIntegration>integration</surefire.excludeIntegration>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
         <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
@@ -88,8 +90,32 @@
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -208,6 +234,9 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <excludedGroups>${surefire.excludeIntegration}</excludedGroups>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.github.os72</groupId>
@@ -286,4 +315,29 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>kafka-integration</id>
+            <activation>
+                <property>
+                    <name>kafka.integration</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <surefire.excludeIntegration>disabled</surefire.excludeIntegration>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <excludedGroups combine.self="override"/>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

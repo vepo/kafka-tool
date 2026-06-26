@@ -1,13 +1,10 @@
 package io.vepo.kafka.tool.consumers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 import io.vepo.kafka.tool.settings.KeySerializer;
-import io.vepo.kafka.tool.settings.KafkaBroker;
-import io.vepo.kafka.tool.settings.ValueSerializer;
 
 class KeyFormatterTest {
 
@@ -17,8 +14,18 @@ class KeyFormatterTest {
     }
 
     @Test
+    void formatInvalidIntegerLength() {
+        assertEquals("Invalid integer", KeyFormatter.format(new byte[] { 1, 2 }, KeySerializer.INTEGER));
+    }
+
+    @Test
     void formatNullKey() {
         assertEquals("null", KeyFormatter.format(null, KeySerializer.STRING));
+    }
+
+    @Test
+    void formatNullSerializer() {
+        assertEquals("No serializer selected", KeyFormatter.format("x".getBytes(), null));
     }
 
     @Test

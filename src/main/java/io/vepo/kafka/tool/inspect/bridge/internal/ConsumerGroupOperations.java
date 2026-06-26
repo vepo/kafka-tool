@@ -1,5 +1,7 @@
-package io.vepo.kafka.tool.inspect;
+package io.vepo.kafka.tool.inspect.bridge.internal;
 
+import static io.vepo.kafka.tool.inspect.ConsumerGroupFormatting.computeLag;
+import static io.vepo.kafka.tool.inspect.ConsumerGroupFormatting.formatAssignment;
 import static java.util.stream.Collectors.toMap;
 
 import java.util.ArrayList;
@@ -7,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import io.vepo.kafka.tool.controls.helpers.DisplayValue;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.ConsumerGroupListing;
@@ -15,21 +16,12 @@ import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.common.TopicPartition;
 
-public final class ConsumerGroupService {
+import io.vepo.kafka.tool.controls.helpers.DisplayValue;
+import io.vepo.kafka.tool.inspect.ConsumerGroupMemberInfo;
+import io.vepo.kafka.tool.inspect.ConsumerGroupSummary;
+import io.vepo.kafka.tool.inspect.PartitionLagRow;
 
-    public static ConsumerGroupService create() {
-        return new ConsumerGroupService();
-    }
-
-    private static String formatAssignment(
-                                           org.apache.kafka.clients.admin.MemberAssignment assignment) {
-        if (assignment == null || assignment.topicPartitions().isEmpty()) {
-            return "-";
-        }
-        return assignment.topicPartitions().stream()
-                         .map(tp -> tp.topic() + "-" + tp.partition())
-                         .collect(Collectors.joining(", "));
-    }
+public final class ConsumerGroupOperations {
 
     private static String formatGroupState(ConsumerGroupListing listing) {
         var groupState = listing.groupState().map(Object::toString);
@@ -37,9 +29,7 @@ public final class ConsumerGroupService {
         return groupState.or(() -> consumerState).orElse("-");
     }
 
-    private ConsumerGroupService() {}
-
-    public List<PartitionLagRow> computeLag(AdminClient client, String groupId) throws Exception {
+    public List<PartitionLagRow> computeLagRows(AdminClient client, String groupId) throws Exception {
         Map<TopicPartition, org.apache.kafka.clients.consumer.OffsetAndMetadata> offsets = client
                                                                                                  .listConsumerGroupOffsets(groupId)
                                                                                                  .partitionsToOffsetAndMetadata()
@@ -57,8 +47,7 @@ public final class ConsumerGroupService {
             long committed = entry.getValue().offset();
             ListOffsetsResultInfo endInfo = endOffsets.get(tp);
             long end = endInfo != null ? endInfo.offset() : committed;
-            long lag = Math.max(0, end - committed);
-            rows.add(new PartitionLagRow(groupId, tp.topic(), tp.partition(), committed, end, lag));
+            rows.add(new PartitionLagRow(groupId, tp.topic(), tp.partition(), committed, end, computeLag(committed, end)));
         }
         return rows;
     }

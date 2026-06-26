@@ -10,13 +10,23 @@ import java.util.function.BiConsumer;
 
 import io.vepo.kafka.tool.inspect.KafkaMessage;
 import io.vepo.kafka.tool.inspect.MessageMetadata;
+import io.vepo.kafka.tool.inspect.bridge.KafkaConsumerBridge;
+import io.vepo.kafka.tool.inspect.bridge.impl.KafkaClientsConsumerBridge;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.ValueSerializer;
 
 public class TopicConsumerService {
 
     private final ExecutorService consumerExecutor = newSingleThreadExecutor();
-    private KafkaAgnosticConsumer selectedConsumer;
+    private final KafkaConsumerBridge consumerBridge;
+
+    public TopicConsumerService() {
+        this(KafkaClientsConsumerBridge.create());
+    }
+
+    TopicConsumerService(KafkaConsumerBridge consumerBridge) {
+        this.consumerBridge = consumerBridge;
+    }
 
     public List<ValueSerializer> availableValueSerializers(KafkaBroker broker) {
         if (broker.hasSchemaRegistry()) {
@@ -35,30 +45,16 @@ public class TopicConsumerService {
         }
     }
 
-    public KafkaAgnosticConsumer consumerFor(ValueSerializer serializer) {
-        if (ValueSerializer.AVRO.equals(serializer)) {
-            return KafkaAgnosticConsumer.avro();
-        } else if (ValueSerializer.JSON.equals(serializer)) {
-            return KafkaAgnosticConsumer.json();
-        } else if (ValueSerializer.PROTOBUF.equals(serializer)) {
-            return KafkaAgnosticConsumer.protobuf();
-        } else if (ValueSerializer.PLAIN_TEXT.equals(serializer)) {
-            return KafkaAgnosticConsumer.plainText();
-        }
-        return null;
-    }
-
     public boolean isRunning() {
-        return selectedConsumer != null && selectedConsumer.isRunning();
+        return consumerBridge.isLiveConsumerRunning();
     }
 
     public void start(KafkaBroker broker, String topic, ValueSerializer valueSerializer,
                       BiConsumer<MessageMetadata, KafkaMessage> onRecord, Runnable onStopped,
                       java.util.function.Consumer<AgnosticConsumerException> onError) {
-        selectedConsumer = consumerFor(valueSerializer);
         consumerExecutor.submit(() -> {
             try {
-                selectedConsumer.start(broker, topic, onRecord);
+                consumerBridge.startLiveConsumer(broker, topic, valueSerializer, onRecord);
                 onStopped.run();
             } catch (AgnosticConsumerException e) {
                 onError.accept(e);
@@ -67,9 +63,7 @@ public class TopicConsumerService {
     }
 
     public void stop() {
-        if (selectedConsumer != null) {
-            selectedConsumer.stop();
-        }
+        consumerBridge.stopLiveConsumer();
     }
 
 }

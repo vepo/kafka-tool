@@ -13,7 +13,7 @@ import io.vepo.kafka.tool.consumers.AgnosticConsumerException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.vepo.kafka.tool.consumers.RecordFetcher;
+import io.vepo.kafka.tool.inspect.FetchedRecord;
 import io.vepo.kafka.tool.consumers.TopicConsumerService;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.inspect.RecordBrowseService;
@@ -73,7 +73,7 @@ public class RecordBrowseController {
         runLater(() -> loading.set(true));
         recordBrowseService.fetchRecords(broker, topic, selectedPartition.partition(), startOffset, maxRecords,
                                          valueSerializer, fetched -> runLater(() -> {
-                                             for (RecordFetcher.FetchedRecord record : fetched) {
+                                             for (FetchedRecord record : fetched) {
                                                  messages.add(MessageRow.from(record.message(), record.metadata(), keySerializer));
                                              }
                                              loading.set(false);

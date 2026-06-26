@@ -12,6 +12,14 @@ import org.junit.jupiter.api.Test;
 class ClusterSummaryTest {
 
     @Test
+    void consumerGroupCountIsZeroWhenMapEmpty() throws Throwable {
+        try (var env = feature("Cluster summary").scenario("Empty consumer group map sums to zero").start()) {
+            var summary = new ClusterSummary("c", 1, 1, 0, 0, 0, 0, 0, Map.of(), "Not configured");
+            env.then("group count is zero", () -> assertEquals(0, summary.consumerGroupCount()));
+        }
+    }
+
+    @Test
     void consumerGroupCountSumsStates() throws Throwable {
         try (var env = feature("Cluster summary").scenario("Sum consumer group counts").start()) {
             var summary = new ClusterSummary("c", 1, 1, 0, 0, 0, 0, 0, Map.of("Stable", 3, "Empty", 2), "Not configured");
@@ -30,6 +38,17 @@ class ClusterSummaryTest {
             env.then("cluster is healthy", () -> assertTrue(summary.healthy()));
             env.then("health summary mentions brokers",
                      () -> assertTrue(summary.healthSummary().contains("3 broker")));
+        }
+    }
+
+    @Test
+    void unhealthyWhenOfflinePartitionsExist() throws Throwable {
+        try (var env = feature("Cluster summary").scenario("Unhealthy when offline partitions exist").start()) {
+            var summary = new ClusterSummary("c", 1, 3, 5, 2, 20, 0, 1, Map.of(), "Reachable");
+
+            env.then("cluster is not healthy", () -> assertFalse(summary.healthy()));
+            env.then("health summary mentions offline",
+                     () -> assertTrue(summary.healthSummary().contains("offline")));
         }
     }
 

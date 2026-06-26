@@ -1,4 +1,4 @@
-package io.vepo.kafka.tool.inspect;
+package io.vepo.kafka.tool.inspect.bridge.internal;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,36 +20,26 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class ClusterMonitorService {
+import io.vepo.kafka.tool.inspect.BrokerConfigEntry;
+import io.vepo.kafka.tool.inspect.BrokerLogDirSummary;
+import io.vepo.kafka.tool.inspect.ClusterBrokerInfo;
+import io.vepo.kafka.tool.inspect.ClusterMonitorSnapshot;
+import io.vepo.kafka.tool.inspect.ClusterSummary;
+import io.vepo.kafka.tool.inspect.ClusterTopicSummary;
+import io.vepo.kafka.tool.inspect.PartitionHealthAnalyzer;
+import io.vepo.kafka.tool.inspect.PartitionHealthIssue;
+import io.vepo.kafka.tool.inspect.ReplicationStats;
+import io.vepo.kafka.tool.inspect.bridge.SchemaRegistryBridge;
 
-    private static final Logger logger = LoggerFactory.getLogger(ClusterMonitorService.class);
+public final class ClusterMonitorOperations {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClusterMonitorOperations.class);
     private static final int DESCRIBE_TOPICS_BATCH_SIZE = 50;
 
-    public static ClusterMonitorService create() {
-        return new ClusterMonitorService();
-    }
+    private final SchemaRegistryBridge schemaRegistryBridge;
 
-    private ClusterMonitorService() {}
-
-    private ReplicationStats computeReplicationStats(Map<String, TopicDescription> descriptions, int brokerCount) {
-        if (descriptions.isEmpty()) {
-            return new ReplicationStats(0, 0, 0, 0);
-        }
-        int min = Integer.MAX_VALUE;
-        int max = 0;
-        int totalRf = 0;
-        int topicsBelowBrokerCount = 0;
-        for (TopicDescription description : descriptions.values()) {
-            int rf = description.partitions().isEmpty() ? 0 : description.partitions().getFirst().replicas().size();
-            min = Math.min(min, rf);
-            max = Math.max(max, rf);
-            totalRf += rf;
-            if (rf < brokerCount) {
-                topicsBelowBrokerCount++;
-            }
-        }
-        double average = (double) totalRf / descriptions.size();
-        return new ReplicationStats(min == Integer.MAX_VALUE ? 0 : min, max, average, topicsBelowBrokerCount);
+    public ClusterMonitorOperations(SchemaRegistryBridge schemaRegistryBridge) {
+        this.schemaRegistryBridge = schemaRegistryBridge;
     }
 
     public List<BrokerConfigEntry> describeBrokerConfig(AdminClient client, int brokerId) throws Exception {
@@ -180,8 +170,8 @@ public final class ClusterMonitorService {
         });
 
         var logDirs = describeLogDirs(client, nodes);
-        var replicationStats = computeReplicationStats(descriptions, nodes.size());
-        var schemaRegistryStatus = SchemaRegistryHealthService.statusForUrl(schemaRegistryUrl);
+        var replicationStats = ReplicationStats.fromTopicDescriptions(descriptions, nodes.size());
+        var schemaRegistryStatus = schemaRegistryBridge.healthStatus(schemaRegistryUrl);
 
         var summary = new ClusterSummary(clusterId, controllerId, nodes.size(), userTopicCount, internalTopicCount,
                                          totalPartitions, underReplicatedCount, offlineCount, consumerGroupsByState,

@@ -1,5 +1,6 @@
 package io.vepo.kafka.tool.inspect;
 
+import static io.vepo.kafka.tool.inspect.ConsumerGroupFormatting.computeLag;
 import static io.vepo.kafka.tool.support.gherkin.Feature.feature;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,8 +22,7 @@ class PartitionLagRowTest {
     void lagNeverNegativeWhenCommittedAhead() throws Throwable {
         try (var env = feature("Consumer group lag").scenario("Clamp lag when committed is ahead").start()) {
             env.given("committed offset ahead of log end");
-            var lag = Math.max(0, 90L - 100L);
-            env.then("lag is zero", () -> assertEquals(0, lag));
+            env.then("lag is zero", () -> assertEquals(0, computeLag(100, 90)));
         }
     }
 

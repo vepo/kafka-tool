@@ -6,6 +6,8 @@ Last updated: 2026-06-26
 
 Kafka Tool is a single-process JavaFX desktop application using an **MVC-style** layout: views (panes, stages, controls) bind to controllers; controllers orchestrate services in `inspect/`, `consumers/`, and `settings/`. One `KafkaAdminService` instance manages the broker connection for the app lifetime.
 
+**Domain language:** see **`docs/DOMAIN.md`** (read before any change; update when terminology shifts).
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ KafkaManagerMainWindow → ApplicationController                          │
@@ -68,29 +70,26 @@ Controllers may use `javafx.collections` and `Platform.runLater` for FX-thread m
 | `MessageRow` | Partition, offset, timestamp, display key/value for tables |
 | `ConsumerState` | IDLE, RUNNING, STOPPED, ERROR |
 
-### `inspect/` — Admin API and domain models
+### `inspect/` — Domain models and Kafka facades
 
-| Class | Responsibility |
-|-------|----------------|
-| `KafkaAdminService` | AdminClient lifecycle; topics, empty topic, consumer groups, cluster monitor, connection test |
-| `ClusterMonitorService` | Cluster snapshot: brokers, partition health, log dirs, replication stats |
+| Class / package | Responsibility |
+|-----------------|----------------|
+| `KafkaAdminService` | Connection lifecycle, executor, watchers; delegates I/O to `KafkaAdminBridge` |
+| `RecordBrowseService` | Partition offsets via admin bridge; record fetch via `KafkaConsumerBridge` |
+| `inspect/bridge/` | `KafkaAdminBridge`, `KafkaConsumerBridge`, `SchemaRegistryBridge` interfaces |
+| `inspect/bridge/impl/` | **Only layer** that constructs `AdminClient` / `KafkaConsumer` |
+| `inspect/bridge/internal/` | Cluster monitor and consumer-group Admin API orchestration |
 | `PartitionHealthAnalyzer` | Under-replicated, offline, leader-not-preferred detection |
-| `SchemaRegistryHealthService` | HTTP health check for configured Schema Registry URL |
-| `ConsumerGroupService` | List groups, describe members, compute lag |
-| `RecordBrowseService` | Topic partition offsets; delegates fetch to `RecordFetcher` |
-| `TopicInfo` | Topic name + internal flag |
-| `KafkaMessage` | Raw key bytes + deserialized value string |
-| `MessageMetadata` | Partition, offset, timestamp from consumer callback |
-| `ConsumerGroupSummary`, `PartitionLagRow`, `ClusterSummary`, `ClusterBrokerInfo`, … | Inspection DTOs |
+| `SchemaRegistryHealthService` | Facade over `HttpSchemaRegistryBridge` |
+| `TopicInfo`, `FetchedRecord`, `ClusterSummary`, … | Inspection DTOs |
 | `ConnectionResult` | Connect/test connection outcome |
 
-### `consumers/` — Topic consumption
+### `consumers/` — Consumption helpers
 
 | Class | Responsibility |
 |-------|----------------|
-| `KafkaAgnosticConsumer` | Factory + poll loop for Avro, JSON, Protobuf, Plain Text |
-| `TopicConsumerService` | Serializer mapping, executor, start/stop lifecycle |
-| `RecordFetcher` | Assign+seek one-shot record fetch for browse |
+| `TopicConsumerService` | Live consumer executor; delegates to `KafkaConsumerBridge` |
+| `RecordValueFormatter` | Deserialized value → display string |
 | `KeyFormatter` | Key byte → display string |
 | `ProtobufHelper` | Protobuf message → JSON |
 | `AgnosticConsumerException` | Unchecked wrapper for consumer failures |
@@ -139,8 +138,10 @@ UI catalog: **`docs/UI_COMPONENTS.md`** (keep in sync when adding controls).
 | Layer | May call | Must not |
 |-------|----------|----------|
 | Views (`controls/`, `stages/`, root panes) | `controllers/`, `viewmodels/` | `inspect/`, `consumers/`, `Settings` directly |
-| `controllers/` | `inspect/`, `consumers/`, `SettingsService`, `viewmodels/` | JavaFX node mutation; Kafka clients directly |
-| `inspect/`, `consumers/`, `settings/` | Kafka, Jackson, filesystem | JavaFX |
+| `controllers/` | `KafkaAdminService`, `SettingsService`, `viewmodels/` | JavaFX node mutation; `org.apache.kafka.clients.*` |
+| `KafkaAdminService`, `RecordBrowseService`, `TopicConsumerService` | `inspect/bridge/*` interfaces | `AdminClient`, `KafkaConsumer` |
+| `inspect/bridge/impl/`, `inspect/bridge/internal/` | kafka-clients, Confluent deserializers | JavaFX |
+| `inspect/` (domain), `consumers/` (formatters), `settings/` | Jackson, filesystem, Kafka metadata types for analysis | JavaFX; client construction |
 
 ## Data flows
 
@@ -157,7 +158,7 @@ UI catalog: **`docs/UI_COMPONENTS.md`** (keep in sync when adding controls).
 ClusterConnectPane [Connect]
   → ClusterConnectController.connect(broker)
   → ApplicationController → KafkaAdminService.connect()  [admin executor]
-    → AdminClient.create(bootstrapServers)
+    → KafkaAdminBridge.connect(bootstrapServers)
     → connection listener → Platform.runLater: swap to MainWindowPane
     → TopicsController.refreshTopics()
 ```
@@ -193,7 +194,7 @@ Key display uses `KeyFormatter` in the service layer, not Kafka key deserializer
 TopicsPane [Browse]
   → RecordBrowseController + RecordBrowseStage
   → RecordBrowseService.describeTopicPartitions()
-  → [Fetch] → RecordFetcher.assign + seek + poll → MessageRow table
+  → [Fetch] → KafkaConsumerBridge.fetchRecords → MessageRow table
 ```
 
 ### 6. Consumer group lag
@@ -214,7 +215,7 @@ Views and controllers write via `SettingsService` → internal `Settings` static
 | Thread | Work |
 |--------|------|
 | JavaFX Application Thread | All UI creation and mutation |
-| `KafkaAdminService` executor (single) | AdminClient operations |
+| `KafkaAdminService` executor (single) | Kafka admin bridge operations |
 | `Settings.saveExecutor` (single) | JSON file writes |
 | `TopicConsumerService` executor (single) | Blocking consumer poll loop |
 
@@ -222,13 +223,13 @@ Views and controllers write via `SettingsService` → internal `Settings` static
 
 ## External integration
 
-### Kafka Admin API
+### Kafka Admin / Consumer API
 
-Used for: list topics, describe topic, list offsets, delete records.
+All client construction lives in `inspect/bridge/impl/`. Facades (`KafkaAdminService`, `TopicConsumerService`, `RecordBrowseService`) call bridge interfaces only.
 
-### Kafka Consumer API
+### Integration tests
 
-Used for: subscribe + poll in `KafkaAgnosticConsumer` implementations.
+Bridge implementations are verified with **Testcontainers** (Kafka + Schema Registry). Run `mvn verify -Dkafka.integration=true`. Unit tests exclude `@Tag("integration")` by default.
 
 ### Confluent Schema Registry
 
@@ -288,8 +289,11 @@ classDiagram
     SubscribeController --> SettingsService
     TopicsController --> KafkaAdminService
     BrokerConfigController --> SettingsService
-    TopicConsumerService --> KafkaAgnosticConsumer
-    KafkaAgnosticConsumer --> KafkaBroker
+    TopicConsumerService --> KafkaConsumerBridge
+    RecordBrowseService --> KafkaConsumerBridge
+    KafkaAdminService --> KafkaAdminBridge
+    KafkaAdminBridge <|.. KafkaClientsAdminBridge
+    KafkaConsumerBridge <|.. KafkaClientsConsumerBridge
     KafkaAdminService --> KafkaBroker
     AbstractKafkaToolStage --> SettingsService
     ScreenBuilder --> WindowHelper
