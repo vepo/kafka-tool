@@ -26,7 +26,7 @@ Every user-facing screen and control must satisfy [Jakob Nielsen's 10 usability 
 
 ## 4. Consistency and standards
 
-- Primary actions use `FormButton` / `ScreenBuilder.addButton` styling from `style.css`.
+- Primary actions use `FormButton` / **`UI.grid().addButton()`** styling from `style.css`.
 - Status and errors use `ViewHeader` + `ViewMessageModel` (not modal `Alert` for feedback).
 - Follow [Eclipse UI Guidelines](https://www.eclipse.org/articles/Article-UI-Guidelines/Index.html) and `docs/UI_COMPONENTS.md`.
 

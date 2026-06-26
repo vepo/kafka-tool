@@ -105,4 +105,12 @@ public class MainWindowPane extends Pane {
                      VPos.CENTER);
     }
 
+    public void selectTab(String label) {
+        getChildren().stream()
+                     .filter(node -> node instanceof Button button && label.equals(button.getText()))
+                     .map(node -> (Button) node)
+                     .findFirst()
+                     .ifPresent(Button::fire);
+    }
+
 }

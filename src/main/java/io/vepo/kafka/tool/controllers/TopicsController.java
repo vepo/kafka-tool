@@ -11,6 +11,8 @@ import io.vepo.kafka.tool.inspect.TopicInfo;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.service.SettingsService;
 import io.vepo.kafka.tool.viewmodels.ViewMessageModel;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.ObservableList;
 import javafx.stage.Stage;
 
@@ -22,6 +24,7 @@ public class TopicsController {
     private final BiConsumer<String, Stage> browseOpener;
     private final Runnable disconnectAction;
     private final ObservableList<TopicInfo> topics = observableArrayList();
+    private final ObjectProperty<String> selectTopicRequest = new SimpleObjectProperty<>();
     private final ViewMessageModel viewMessage = new ViewMessageModel();
 
     public TopicsController(KafkaAdminService adminService, SettingsService settingsService,
@@ -80,6 +83,20 @@ public class TopicsController {
             topics.setAll(topicList);
             viewMessage.showSuccess("Found " + topicList.size() + " topic(s).");
         }));
+    }
+
+    public void selectTopic(String topicName) {
+        runLater(() -> {
+            if (topicName == null || topicName.isBlank()) {
+                return;
+            }
+            selectTopicRequest.set(topicName);
+            viewMessage.showInfo("Selected topic \"" + topicName + "\".");
+        });
+    }
+
+    public ObjectProperty<String> selectTopicRequestProperty() {
+        return selectTopicRequest;
     }
 
     public ViewMessageModel viewMessage() {

@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.vepo.kafka.tool.controls.helpers.DisplayValue;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
+import org.apache.kafka.clients.admin.ConsumerGroupListing;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.common.TopicPartition;
@@ -22,11 +24,17 @@ public final class ConsumerGroupService {
     private static String formatAssignment(
                                            org.apache.kafka.clients.admin.MemberAssignment assignment) {
         if (assignment == null || assignment.topicPartitions().isEmpty()) {
-            return "";
+            return "-";
         }
         return assignment.topicPartitions().stream()
                          .map(tp -> tp.topic() + "-" + tp.partition())
                          .collect(Collectors.joining(", "));
+    }
+
+    private static String formatGroupState(ConsumerGroupListing listing) {
+        var groupState = listing.groupState().map(Object::toString);
+        var consumerState = listing.state().map(Object::toString);
+        return groupState.or(() -> consumerState).orElse("-");
     }
 
     private ConsumerGroupService() {}
@@ -59,14 +67,15 @@ public final class ConsumerGroupService {
         ConsumerGroupDescription description = client.describeConsumerGroups(List.of(groupId)).all().get()
                                                      .get(groupId);
         return description.members().stream()
-                          .map(member -> new ConsumerGroupMemberInfo(member.consumerId(), member.clientId(), member.host(),
+                          .map(member -> new ConsumerGroupMemberInfo(member.consumerId(), member.clientId(),
+                                                                     DisplayValue.ofString(member.host()),
                                                                      formatAssignment(member.assignment())))
                           .collect(Collectors.toList());
     }
 
     public List<ConsumerGroupSummary> listGroups(AdminClient client) throws Exception {
         return client.listConsumerGroups().all().get().stream()
-                     .map(listing -> new ConsumerGroupSummary(listing.groupId(), listing.state().toString()))
+                     .map(listing -> new ConsumerGroupSummary(listing.groupId(), formatGroupState(listing)))
                      .collect(Collectors.toList());
     }
 

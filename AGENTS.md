@@ -7,7 +7,7 @@ Guidance for AI agents working in this repository.
 **Kafka Tool** is a JavaFX desktop GUI for Kafka cluster management: configure brokers, list topics, subscribe to topics (Avro / JSON / Protobuf), view messages, and empty topics. Version 0.0.2.
 
 - **Language:** Java 25
-- **UI:** JavaFX 25 (no FXML — programmatic UI via `ScreenBuilder`)
+- **UI:** JavaFX 25 (no FXML — programmatic UI via **`UI`** builder API)
 - **Build:** Maven
 - **Main class:** `io.vepo.kafka.tool.KafkaManagerMainWindow`
 
@@ -22,7 +22,7 @@ mvn verify
 
 # Local Kafka stack (KRaft Kafka + Schema Registry)
 ./scripts/setup-local-env.sh
-# Bootstrap: localhost:29092  |  Schema Registry: http://localhost:8081
+# Bootstrap: localhost:29092,localhost:29093,localhost:29094  |  Schema Registry: http://localhost:8081
 ```
 
 ## Architecture
@@ -43,7 +43,7 @@ io.vepo.kafka.tool/
 ├── stages/             Secondary window views
 └── controls/           Reusable UI widgets (see docs/UI_COMPONENTS.md)
     ├── base/           AbstractKafkaToolStage
-    ├── builders/       ScreenBuilder, ResizePolicy
+    ├── builders/       UI, TableBuilder, ScreenBuilder, ResizePolicy
     └── helpers/        WindowHelper, ResizeHelper
 ```
 
@@ -88,6 +88,7 @@ Bump versions in `pom.xml` properties only; keep Kafka and Confluent versions al
 ## Code quality rules
 
 Follow `.cursor/rules/java-quality.mdc` for all Java changes.
+Follow `.cursor/rules/ui-builder.mdc` for all UI in panes, stages, and controls.
 Follow `.cursor/rules/tdd-gherkin.mdc` for tests and new features (Gherkin scenario first).
 Follow `.cursor/rules/project-scripts.mdc` for scripts and automation.
 

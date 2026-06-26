@@ -45,7 +45,8 @@ public class ProduceEconomicIndexes implements Callable<Integer> {
                                                      .build();
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Option(names = "--bootstrap-servers", defaultValue = "localhost:29092",
+    @Option(names = "--bootstrap-servers",
+            defaultValue = "localhost:29092,localhost:29093,localhost:29094",
             description = "Kafka bootstrap servers.")
     String bootstrapServers;
 

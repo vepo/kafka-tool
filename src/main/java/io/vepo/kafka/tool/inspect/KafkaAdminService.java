@@ -68,6 +68,7 @@ public class KafkaAdminService implements Closeable {
 
     private static <T> void ignore(T value) {}
 
+    private final ClusterMonitorService clusterMonitorService = ClusterMonitorService.create();
     private final ConsumerGroupService consumerGroupService = ConsumerGroupService.create();
     private BrokerStatus status;
 
@@ -152,6 +153,14 @@ public class KafkaAdminService implements Closeable {
                error -> logger.error("Error deleting records!", error));
     }
 
+    public void describeBrokerConfig(int brokerId, Consumer<List<BrokerConfigEntry>> callback) {
+        runOnAdminClient(client -> callback.accept(clusterMonitorService.describeBrokerConfig(client, brokerId)),
+                         error -> {
+                             logger.error("Could not describe broker config!", error);
+                             callback.accept(emptyList());
+                         });
+    }
+
     public void describeConsumerGroupMembers(String groupId, Consumer<List<ConsumerGroupMemberInfo>> callback) {
         runOnAdminClient(client -> callback.accept(consumerGroupService.describeMembers(client, groupId)),
                          error -> {
@@ -226,6 +235,14 @@ public class KafkaAdminService implements Closeable {
                 callback.accept(emptyList());
             }
         });
+    }
+
+    public void loadClusterMonitor(String schemaRegistryUrl, Consumer<ClusterMonitorSnapshot> callback) {
+        runOnAdminClient(client -> callback.accept(clusterMonitorService.loadSnapshot(client, schemaRegistryUrl)),
+                         error -> {
+                             logger.error("Could not load cluster monitor snapshot!", error);
+                             callback.accept(null);
+                         });
     }
 
     public void runOnAdminClient(AdminTask task, Consumer<Throwable> errorHandler) {

@@ -6,7 +6,7 @@ import static io.vepo.kafka.tool.controls.builders.ResizePolicy.grow;
 import io.vepo.kafka.tool.controllers.BrokerConfigController;
 import io.vepo.kafka.tool.controllers.BrokerConfigController.BrokerValidationException;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
-import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
+import static io.vepo.kafka.tool.controls.builders.UI.grid;
 import io.vepo.kafka.tool.controls.helpers.TableActionIcons;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.KafkaBrokerValidator;
@@ -88,9 +88,9 @@ public class BrokerConfigurationStage extends AbstractKafkaToolStage {
     public BrokerConfigurationStage(BrokerConfigController controller, Stage owner) {
         super("kafkaBrokerConfig", owner, true, new WindowSettings(670, 512), controller.getSettingsService());
         setTitle("Kafka Brokers");
-        var gridBuilder = ScreenBuilder.grid()
-                                       .withViewHeader("Kafka brokers",
-                                                       "Add and edit cluster profiles. Test each profile before connecting.");
+        var gridBuilder = grid()
+                                .withViewHeader("Kafka brokers",
+                                                "Add and edit cluster profiles. Test each profile before connecting.");
         gridBuilder.getViewHeader().bindMessage(controller.viewMessage());
         gridBuilder.addText("Name");
         var txtName = gridBuilder.addTextField();

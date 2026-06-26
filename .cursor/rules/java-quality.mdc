@@ -9,7 +9,7 @@ alwaysApply: false
 ## Style and conventions
 
 - Match existing code: tabs for indentation in this project, `var` where type is obvious.
-- Keep classes focused; prefer extending existing abstractions (`AbstractKafkaToolStage`, `KafkaAgnosticConsumer`, `ScreenBuilder`) over new parallel patterns.
+- Keep classes focused; prefer extending existing abstractions (`AbstractKafkaToolStage`, `KafkaAgnosticConsumer`, **`UI`**) over new parallel patterns.
 - Use SLF4J for logging (`LoggerFactory.getLogger`); no `System.out.println` in production code.
 - Mutable state belongs in services or JavaFX nodes; immutable data carriers belong in `inspect/` and `viewmodels/`.
 

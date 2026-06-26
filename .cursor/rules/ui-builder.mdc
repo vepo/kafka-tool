@@ -1,0 +1,94 @@
+---
+description: All JavaFX views must be composed through the UI builder API
+globs: "**/controls/**,**/stages/**,**/*Pane.java,**/KafkaManagerMainWindow.java"
+alwaysApply: false
+---
+
+# UI Builder Architecture
+
+All user-facing screens are built through the fluent **`UI`** builder API in `io.vepo.kafka.tool.controls.builders.UI`. Views must not construct layout trees with raw JavaFX containers (`GridPane`, `VBox`, `TableView`, `Button`, …) except inside the builder implementations themselves.
+
+## Entry point
+
+Use **`UI`** — not `ScreenBuilder`, `GridPane`, or `new TableView` in panes/stages.
+
+| Builder | Purpose |
+|---------|---------|
+| `UI.table()` | Standalone data tables |
+| `UI.grid()` | Form/dialog grid layout (delegates to `ScreenBuilder.grid()`) |
+| `UI.mainView()` | Standard main-window tab content (header + body + action bar) |
+| `UI.mainWindow()` | Left-nav shell with tabs |
+| `UI.actionBar()` | Refresh / auto-refresh / disconnect row |
+| `UI.tableWithEmptyState()` | Table + `EmptyStatePane` stack |
+| `UI.section()`, `UI.summaryBar()`, `UI.statCard()` | Cluster monitor sections |
+| `UI.twoColumns()`, `UI.verticalSection()`, `UI.scroll()` | Layout helpers |
+
+## Required patterns
+
+### Tables
+
+```java
+// ✅ GOOD
+var table = UI.table()
+    .withColumn("Key", KafkaMessage::key)
+    .withColumn("Value", KafkaMessage::value)
+    .withActions("Actions")
+        .button("View", this::openViewer)
+        .width(fixedSize(96))
+        .add()
+    .items(controller.getRows())
+    .build();
+
+// ❌ BAD — raw JavaFX in a pane/stage
+var table = new TableView<MessageRow>();
+var column = new TableColumn<MessageRow, String>("Key");
+```
+
+Legacy grid-embedded tables may still chain `.withColumn("X").fromProperty(...).add()` on `UI.grid().addTableView(n)`; prefer the single-call `withColumn(header, getter)` form for new code.
+
+### Main window tabs
+
+```java
+// ✅ GOOD
+var main = UI.mainWindow()
+    .tab("Topics", new TopicsPane(controller))
+    .tab("Consumers", new ConsumerGroupsPane(controller))
+    .build();
+
+// ✅ GOOD — tab content
+var view = UI.mainView()
+    .title("Topics", "Browse and subscribe to topics.")
+    .mainWindowHeader()
+    .message(controller.viewMessage())
+    .body(UI.tableWithEmptyState(table, controller.getTopics(), "No topics."))
+    .actionBar(UI.actionBar().refresh("Refresh", controller::refresh).disconnect("Disconnect", controller::disconnect).build())
+    .build();
+```
+
+### Stages (dialogs)
+
+```java
+// ✅ GOOD
+var grid = UI.grid()
+    .withViewHeader("Browse records", "Fetch by partition and offset.")
+    .newLine().addText("Partition");
+```
+
+## Layer rules
+
+- **Panes and stages** — compose UI only via `UI.*` builders; wire controller callbacks in lambdas passed to builders.
+- **`controls/builders/`** — owns builder implementations (`UI`, `TableBuilder`, `ScreenBuilder`, `ResizePolicy`).
+- **Controllers** — no JavaFX node construction; expose observables and actions only.
+
+## When adding UI
+
+1. Extend `UI` or an existing builder before adding ad-hoc layout code to a pane.
+2. Update `docs/UI_COMPONENTS.md` when introducing a new builder method or reusable pattern.
+3. Do not import `ScreenBuilder` directly in panes/stages — use `UI.grid()` instead.
+
+## Checklist
+
+- [ ] No `new GridPane` / `new TableView` / `new ViewHeader` in panes or stages?
+- [ ] Main window assembled with `UI.mainWindow()`?
+- [ ] Tab panes use `UI.mainView()` + `UI.table()` / `UI.actionBar()`?
+- [ ] Stages use `UI.grid()` for forms?

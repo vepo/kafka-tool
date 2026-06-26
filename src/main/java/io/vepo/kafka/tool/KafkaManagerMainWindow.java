@@ -1,9 +1,9 @@
 package io.vepo.kafka.tool;
 
+import static io.vepo.kafka.tool.controls.builders.UI.mainWindow;
 import static javafx.application.Platform.runLater;
 
 import io.vepo.kafka.tool.controllers.ApplicationController;
-import io.vepo.kafka.tool.controls.MainWindowPane;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.helpers.ResizeHelper;
 import io.vepo.kafka.tool.controls.helpers.WindowHelper;
@@ -30,7 +30,6 @@ public class KafkaManagerMainWindow extends Application {
 
     private ApplicationController applicationController;
     private RootControl root;
-    private MainWindowPane main;
     private ClusterConnectPane clusterConnectPane;
     private Stage primaryStage;
 
@@ -52,10 +51,16 @@ public class KafkaManagerMainWindow extends Application {
         var settingsService = applicationController.getSettingsService();
         primaryStage = stage;
 
-        main = new MainWindowPane();
-        main.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        main.add("Topics", new TopicsPane(applicationController.createTopicsController()));
-        main.add("Consumers", new ConsumerGroupsPane(applicationController.createConsumerGroupsController()));
+        var topicsController = applicationController.createTopicsController();
+        var mainRef = new io.vepo.kafka.tool.controls.MainWindowPane[1];
+        mainRef[0] = mainWindow()
+                                 .tab("Cluster", new ClusterMonitorPane(applicationController.createClusterMonitorController(
+                                                                                                                             topic -> applicationController.navigateToTopic(topic,
+                                                                                                                                                                            () -> mainRef[0].selectTab("Topics")))))
+                                 .tab("Topics", new TopicsPane(topicsController))
+                                 .tab("Consumers", new ConsumerGroupsPane(applicationController.createConsumerGroupsController()))
+                                 .build();
+        var main = mainRef[0];
 
         stage.initStyle(StageStyle.UNDECORATED);
         AbstractKafkaToolStage.setup(stage);

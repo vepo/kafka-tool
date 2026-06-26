@@ -1,3 +1,32 @@
+x-kafka-env: &kafka-env
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qg
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+x-kafka-healthcheck: &kafka-healthcheck
+  test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+  interval: 5s
+  timeout: 10s
+  retries: 12
+  start_period: 45s
+
+x-kafka-depends: &kafka-depends
+  kafka-1:
+    condition: service_healthy
+  kafka-2:
+    condition: service_healthy
+  kafka-3:
+    condition: service_healthy
+
 x-jbang: &jbang
   image: jbangdev/jbang:latest
   environment:
@@ -6,58 +35,85 @@ x-jbang: &jbang
     - ../../scripts:/workspace/scripts:ro
   working_dir: /workspace
   depends_on:
-    kafka:
-      condition: service_healthy
+    <<: *kafka-depends
   restart: unless-stopped
 
 x-consumer: &consumer
   <<: *jbang
   profiles: [demo]
-  command:
-    - scripts/consume-economic-index
-    - --bootstrap-servers
-    - kafka:9092
 
 services:
-  kafka:
+  kafka-1:
     image: vepo/kafka:latest
-    container_name: kafka-tool-kafka
+    container_name: kafka-tool-kafka-1
     ports:
       - "29092:29092"
     environment:
+      <<: *kafka-env
       KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://localhost:29092
     volumes:
-      - ./volume/kafka/data:/tmp/kraft-combined-logs
+      - ./volume/kafka-1/data:/tmp/kraft-combined-logs
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
-      interval: 5s
-      timeout: 10s
-      retries: 12
-      start_period: 30s
+      <<: *kafka-healthcheck
+
+  kafka-2:
+    image: vepo/kafka:latest
+    container_name: kafka-tool-kafka-2
+    ports:
+      - "29093:29092"
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://localhost:29093
+    volumes:
+      - ./volume/kafka-2/data:/tmp/kraft-combined-logs
+    healthcheck:
+      <<: *kafka-healthcheck
+
+  kafka-3:
+    image: vepo/kafka:latest
+    container_name: kafka-tool-kafka-3
+    ports:
+      - "29094:29092"
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092,PLAINTEXT_HOST://localhost:29094
+    volumes:
+      - ./volume/kafka-3/data:/tmp/kraft-combined-logs
+    healthcheck:
+      <<: *kafka-healthcheck
 
   schema-registry:
     image: confluentinc/cp-schema-registry:8.3.0
     container_name: kafka-tool-schema-registry
     depends_on:
-      kafka:
-        condition: service_healthy
+      <<: *kafka-depends
     ports:
       - "8081:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+  demo-records-producer:
+    <<: *jbang
+    profiles: [demo]
+    container_name: kafka-tool-demo-records-producer
+    depends_on:
+      <<: *kafka-depends
+      schema-registry:
+        condition: service_started
+    command:
+      - scripts/produce-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --schema-registry-url
+      - http://schema-registry:8081
 
   economic-index-producer:
     <<: *jbang
@@ -66,7 +122,116 @@ services:
     command:
       - scripts/produce-economic-indexes
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+
+  economic-streams:
+    <<: *jbang
+    profiles: [demo]
+    container_name: kafka-tool-economic-streams
+    command:
+      - scripts/stream-economic-windows
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+
+  users-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-users-consumer-1
+    command:
+      - scripts/consume-demo-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - users
+      - --group
+      - users-demo
+      - --format
+      - json
+      - --instance-id
+      - "1"
+
+  users-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-users-consumer-2
+    command:
+      - scripts/consume-demo-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - users
+      - --group
+      - users-demo
+      - --format
+      - json
+      - --instance-id
+      - "2"
+
+  person-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-person-consumer-1
+    command:
+      - scripts/consume-demo-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - person
+      - --group
+      - person-demo
+      - --format
+      - protobuf
+      - --instance-id
+      - "1"
+
+  person-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-person-consumer-2
+    command:
+      - scripts/consume-demo-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - person
+      - --group
+      - person-demo
+      - --format
+      - protobuf
+      - --instance-id
+      - "2"
+
+  user-avro-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-user-avro-consumer-1
+    command:
+      - scripts/consume-demo-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - user-avro
+      - --group
+      - user-avro-demo
+      - --format
+      - avro
+      - --schema-registry-url
+      - http://schema-registry:8081
+      - --instance-id
+      - "1"
+
+  user-avro-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-user-avro-consumer-2
+    command:
+      - scripts/consume-demo-records
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - user-avro
+      - --group
+      - user-avro-demo
+      - --format
+      - avro
+      - --schema-registry-url
+      - http://schema-registry:8081
+      - --instance-id
+      - "2"
 
   cpi-consumer-1:
     <<: *consumer
@@ -74,7 +239,7 @@ services:
     command:
       - scripts/consume-economic-index
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
       - --topic
       - economic-cpi
       - --group
@@ -88,7 +253,7 @@ services:
     command:
       - scripts/consume-economic-index
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
       - --topic
       - economic-cpi
       - --group
@@ -102,7 +267,7 @@ services:
     command:
       - scripts/consume-economic-index
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
       - --topic
       - economic-gdp
       - --group
@@ -116,7 +281,7 @@ services:
     command:
       - scripts/consume-economic-index
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
       - --topic
       - economic-gdp
       - --group
@@ -130,7 +295,7 @@ services:
     command:
       - scripts/consume-economic-index
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
       - --topic
       - economic-unemployment
       - --group
@@ -144,10 +309,40 @@ services:
     command:
       - scripts/consume-economic-index
       - --bootstrap-servers
-      - kafka:9092
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
       - --topic
       - economic-unemployment
       - --group
       - unemployment-analytics
+      - --instance-id
+      - "2"
+
+  cpi-window-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-cpi-window-consumer-1
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - economic-cpi-1m-avg
+      - --group
+      - cpi-window-analytics
+      - --raw
+      - --instance-id
+      - "1"
+
+  cpi-window-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-cpi-window-consumer-2
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - --topic
+      - economic-cpi-1m-avg
+      - --group
+      - cpi-window-analytics
+      - --raw
       - --instance-id
       - "2"

@@ -10,6 +10,7 @@ Kafka Tool is a single-process JavaFX desktop application using an **MVC-style**
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ KafkaManagerMainWindow → ApplicationController                          │
 │   ClusterConnectPane → ClusterConnectController                         │
+│   ClusterMonitorPane → ClusterMonitorController                           │
 │   TopicsPane → TopicsController → TopicSubscribeStage / RecordBrowseStage │
 │   ConsumerGroupsPane → ConsumerGroupsController                           │
 │   BrokerConfigurationStage → BrokerConfigController                     │
@@ -40,6 +41,7 @@ Kafka Tool is a single-process JavaFX desktop application using an **MVC-style**
 |-------|----------------|
 | `KafkaManagerMainWindow` | Application entry; creates `ApplicationController`; scene chrome |
 | `ClusterConnectPane` | View: broker combo, test/configure/connect |
+| `ClusterMonitorPane` | View: cluster health, brokers, log dirs, partition issues |
 | `TopicsPane` | View: topic list with Empty / Browse / Subscribe |
 | `ConsumerGroupsPane` | View: consumer groups, members, lag table |
 
@@ -49,11 +51,13 @@ Kafka Tool is a single-process JavaFX desktop application using an **MVC-style**
 |-------|----------------|
 | `ApplicationController` | Owns `KafkaAdminService` and `SettingsService`; wires child controllers; connect/shutdown |
 | `ClusterConnectController` | Broker list for connect screen; opens broker config |
-| `TopicsController` | Topic list; empty topic; open subscribe/browse stages; disconnect |
+| `ClusterMonitorController` | Cluster snapshot refresh, auto-refresh, navigate to topic / broker config |
+| `TopicsController` | Topic list; empty topic; open subscribe/browse stages; disconnect; topic selection |
 | `SubscribeController` | Live consumer lifecycle, message rows, serializer persistence |
 | `RecordBrowseController` | Partition/offset fetch, browse message rows |
 | `ConsumerGroupsController` | Group list, members, lag rows, auto-refresh |
 | `BrokerConfigController` | Broker CRUD and connection test via `SettingsService` |
+| `BrokerRuntimeConfigController` | Read-only live broker config from cluster |
 
 Controllers may use `javafx.collections` and `Platform.runLater` for FX-thread marshalling. They must not mutate JavaFX nodes directly.
 
@@ -68,13 +72,16 @@ Controllers may use `javafx.collections` and `Platform.runLater` for FX-thread m
 
 | Class | Responsibility |
 |-------|----------------|
-| `KafkaAdminService` | AdminClient lifecycle; topics, empty topic, consumer groups, connection test |
+| `KafkaAdminService` | AdminClient lifecycle; topics, empty topic, consumer groups, cluster monitor, connection test |
+| `ClusterMonitorService` | Cluster snapshot: brokers, partition health, log dirs, replication stats |
+| `PartitionHealthAnalyzer` | Under-replicated, offline, leader-not-preferred detection |
+| `SchemaRegistryHealthService` | HTTP health check for configured Schema Registry URL |
 | `ConsumerGroupService` | List groups, describe members, compute lag |
 | `RecordBrowseService` | Topic partition offsets; delegates fetch to `RecordFetcher` |
 | `TopicInfo` | Topic name + internal flag |
 | `KafkaMessage` | Raw key bytes + deserialized value string |
 | `MessageMetadata` | Partition, offset, timestamp from consumer callback |
-| `ConsumerGroupSummary`, `PartitionLagRow`, … | Consumer group inspection DTOs |
+| `ConsumerGroupSummary`, `PartitionLagRow`, `ClusterSummary`, `ClusterBrokerInfo`, … | Inspection DTOs |
 | `ConnectionResult` | Connect/test connection outcome |
 
 ### `consumers/` — Topic consumption
@@ -112,6 +119,7 @@ Config directory: `~/.kafka-tool/`
 |-------|----------------|
 | `AbstractKafkaToolStage` | Undecorated stage setup, dialog size via `SettingsService` |
 | `BrokerConfigurationStage` | Broker table + add form (view only) |
+| `BrokerRuntimeConfigStage` | Read-only broker runtime configuration from cluster |
 | `TopicSubscribeStage` | Live subscribe UI bound to `SubscribeController` |
 | `RecordBrowseStage` | Partition/offset browse UI bound to `RecordBrowseController` |
 | `MessageViewerStage` | Read-only formatted message view |
@@ -121,7 +129,7 @@ Config directory: `~/.kafka-tool/`
 | Area | Key types |
 |------|-----------|
 | Layout | `MainWindowPane`, `CentralizedPane`, `EmptyStatePane`, `ProgressStatusBar`, `WindowHead`, `TopicConsumerStatusBar` |
-| Builders | `ScreenBuilder`, `ResizePolicy` |
+| Builders | `UI`, `TableBuilder`, `ScreenBuilder`, `ResizePolicy` |
 | Helpers | `WindowHelper`, `ResizeHelper`, `ViewHeader`, `UserConfirmation` |
 
 UI catalog: **`docs/UI_COMPONENTS.md`** (keep in sync when adding controls).
@@ -232,12 +240,18 @@ Required for Avro and Protobuf; optional for JSON Schema. URL from `KafkaBroker.
 
 | Service | Image | Host port |
 |---------|-------|-----------|
-| Kafka | `vepo/kafka:latest` (KRaft) | 29092 |
+| Kafka | `vepo/kafka:latest` (KRaft) × 3 | 29092, 29093, 29094 |
 | Schema Registry | `confluentinc/cp-schema-registry:8.3.0` | 8081 |
+| Demo records producer | `jbangdev/jbang` (profile `demo`) | — |
+| Demo records consumers | `jbangdev/jbang` × 6 (JSON/Protobuf/Avro) | — |
 | Economic index producer | `jbangdev/jbang` (profile `demo`) | — |
 | Economic index consumers | `jbangdev/jbang` × 6 (2 per index topic) | — |
+| CPI window stream | `jbangdev/jbang` Kafka Streams | — |
+| Windowed CPI consumers | `jbangdev/jbang` × 2 on `economic-cpi-1m-avg` | — |
 
-Demo profile (`./scripts/setup-local-env.sh up`) publishes World Bank open-data indicators to `economic-cpi`, `economic-gdp`, and `economic-unemployment`. JBang scripts under `scripts/` run in containers via the official JBang image; consumer groups `cpi-analytics`, `gdp-analytics`, and `unemployment-analytics` each have two members.
+Demo profile (`./scripts/setup-local-env.sh up`) runs a **3-broker** cluster (RF 3). JBang scripts under `scripts/` run in containers via `jbangdev/jbang:latest`. Demo producers feed `users`, `person`, and `user-avro` with paired consumers; World Bank data fills `economic-cpi`, `economic-gdp`, and `economic-unemployment`. `stream-economic-windows` writes 1-minute tumbling CPI averages to `economic-cpi-1m-avg`.
+
+Example broker profile: bootstrap `localhost:29092,localhost:29093,localhost:29094`, registry `http://localhost:8081`.
 
 ## Build artifacts
 

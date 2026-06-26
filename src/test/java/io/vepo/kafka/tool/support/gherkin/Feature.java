@@ -197,7 +197,7 @@ public final class Feature {
         }
     }
 
-    private static final String DEFAULT_BOOTSTRAP = "localhost:29092";
+    private static final String DEFAULT_BOOTSTRAP = "localhost:29092,localhost:29093,localhost:29094";
 
     private static final String DEFAULT_SCHEMA_REGISTRY = "http://localhost:8081";
 

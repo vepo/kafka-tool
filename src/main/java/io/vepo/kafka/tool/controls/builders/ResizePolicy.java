@@ -13,6 +13,30 @@ public interface ResizePolicy {
             this.weight = weight;
         }
 
+        int weight() {
+            return weight;
+        }
+
+    }
+
+    class FitContentResizePolicy implements ResizePolicy {
+
+        private final int minWidth;
+        private final int maxWidth;
+
+        FitContentResizePolicy(int minWidth, int maxWidth) {
+            this.minWidth = minWidth;
+            this.maxWidth = maxWidth;
+        }
+
+        int maxWidth() {
+            return maxWidth;
+        }
+
+        int minWidth() {
+            return minWidth;
+        }
+
     }
 
     class FixedSizeResizePolicy implements ResizePolicy {
@@ -29,8 +53,16 @@ public interface ResizePolicy {
             return penalty;
         }
 
+        int penalty() {
+            return penalty;
+        }
+
         protected void setPenalty(int penalty) {
             this.penalty = penalty;
+        }
+
+        int size() {
+            return size;
         }
 
     }
@@ -48,13 +80,16 @@ public interface ResizePolicy {
                                                     .sum();
         for (int i = 0; i < resizePolicies.size(); ++i) {
             var policy = resizePolicies.get(i);
-            if (policy instanceof FixedSizeResizePolicy) {
-                fn.accept(i, (double) ((FixedSizeResizePolicy) policy).size);
-            } else if (policy instanceof DistributeResizePolicy) {
-                fn.accept(i, Math.max(128,
-                                      (((DistributeResizePolicy) policy).weight * distributable) / distibutionFactor));
+            if (policy instanceof FixedSizeResizePolicy fixed) {
+                fn.accept(i, (double) fixed.size);
+            } else if (policy instanceof DistributeResizePolicy distribute) {
+                fn.accept(i, Math.max(128, ((distribute.weight * distributable) / distibutionFactor)));
             }
         }
+    }
+
+    static ResizePolicy fitContent(int minWidth, int maxWidth) {
+        return new FitContentResizePolicy(minWidth, maxWidth);
     }
 
     static ResizePolicy fixedSize(int size) {

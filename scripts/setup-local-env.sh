@@ -5,14 +5,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="${SCRIPT_DIR}/../resources/docker"
 COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.yaml"
 DEMO_PROFILE="demo"
+KAFKA_BROKERS=(kafka-1 kafka-2 kafka-3)
+PRIMARY_BROKER="${KAFKA_BROKERS[0]}"
+REPLICATION_FACTOR=3
 
-BOOTSTRAP_SERVERS="localhost:29092"
+BOOTSTRAP_SERVERS="localhost:29092,localhost:29093,localhost:29094"
 SCHEMA_REGISTRY_URL="http://localhost:8081"
-TEST_TOPICS=(users person user-avro)
+TEST_TOPICS=(
+	"users:3"
+	"person:3"
+	"user-avro:3"
+)
 ECONOMIC_TOPICS=(
-	"economic-cpi:2"
-	"economic-gdp:2"
-	"economic-unemployment:2"
+	"economic-cpi:3"
+	"economic-gdp:3"
+	"economic-unemployment:3"
+	"economic-cpi-1m-avg:3"
 )
 
 usage() {
@@ -20,9 +28,10 @@ usage() {
 Usage: $(basename "$0") [command]
 
 Commands:
-  up        Start Kafka, Schema Registry, and demo consumers (default)
+  up        Start 3-broker Kafka, Schema Registry, and demo workloads (default)
   down      Stop and remove containers
   restart   Restart the local stack
+  reset     Stop the stack and wipe broker data volumes
   status    Show container status
   logs      Follow container logs
 
@@ -30,9 +39,13 @@ Connection details (after 'up'):
   Bootstrap servers:  ${BOOTSTRAP_SERVERS}
   Schema Registry:    ${SCHEMA_REGISTRY_URL}
 
-Demo data (World Bank open economic indexes):
-  Topics:             economic-cpi, economic-gdp, economic-unemployment
-  Consumer groups:    cpi-analytics (2), gdp-analytics (2), unemployment-analytics (2)
+Demo workloads (JBang containers):
+  Producers:          demo-records (users/person/user-avro), economic indexes (World Bank)
+  Consumers:          2 instances per demo topic and economic index
+  Kafka Streams:      1-minute CPI averages -> economic-cpi-1m-avg
+
+Note: Upgrading from the old single-broker layout requires resetting broker data:
+  $(basename "$0") reset
 EOF
 }
 
@@ -51,18 +64,26 @@ compose() {
 	docker compose -f "${COMPOSE_FILE}" "$@"
 }
 
-wait_for_kafka() {
-	echo "Waiting for Kafka..."
+wait_for_broker() {
+	local broker="$1"
 	for _ in $(seq 1 60); do
-		if compose exec -T kafka kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1; then
-			echo "Kafka is ready."
+		if compose exec -T "${broker}" kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1; then
+			echo "  ${broker} is ready."
 			return 0
 		fi
 		sleep 2
 	done
-	echo "Kafka did not become ready in time." >&2
-	compose logs kafka >&2 || true
-	exit 1
+	echo "${broker} did not become ready in time." >&2
+	compose logs "${broker}" >&2 || true
+	return 1
+}
+
+wait_for_kafka() {
+	echo "Waiting for Kafka cluster (3 brokers)..."
+	for broker in "${KAFKA_BROKERS[@]}"; do
+		wait_for_broker "${broker}" || exit 1
+	done
+	echo "Kafka cluster is ready."
 }
 
 wait_for_schema_registry() {
@@ -81,22 +102,23 @@ wait_for_schema_registry() {
 
 create_topic() {
 	local topic="$1"
-	local partitions="${2:-1}"
+	local partitions="${2:-3}"
 
-	compose exec -T kafka kafka-topics.sh \
+	compose exec -T "${PRIMARY_BROKER}" kafka-topics.sh \
 		--bootstrap-server localhost:9092 \
 		--create \
 		--if-not-exists \
 		--topic "${topic}" \
 		--partitions "${partitions}" \
-		--replication-factor 1 >/dev/null
-	echo "  - ${topic} (${partitions} partition(s))"
+		--replication-factor "${REPLICATION_FACTOR}" >/dev/null
+	echo "  - ${topic} (${partitions} partitions, RF ${REPLICATION_FACTOR})"
 }
 
 create_test_topics() {
 	echo "Creating test topics..."
-	for topic in "${TEST_TOPICS[@]}"; do
-		create_topic "${topic}" 1
+	for entry in "${TEST_TOPICS[@]}"; do
+		IFS=':' read -r topic partitions <<< "${entry}"
+		create_topic "${topic}" "${partitions}"
 	done
 }
 
@@ -108,8 +130,8 @@ create_economic_topics() {
 	done
 }
 
-start_demo_consumers() {
-	echo "Starting economic index producer and consumers (JBang)..."
+start_demo_workloads() {
+	echo "Starting demo producers, consumers, and Kafka Streams (JBang)..."
 	compose --profile "${DEMO_PROFILE}" up -d
 }
 
@@ -126,12 +148,11 @@ Example broker profile for Kafka Tool:
   Bootstrap servers: ${BOOTSTRAP_SERVERS}
   Schema Registry:   ${SCHEMA_REGISTRY_URL}
 
-Demo economic indexes (World Bank open data):
-  Topics:             economic-cpi, economic-gdp, economic-unemployment
-  Consumer groups:    cpi-analytics, gdp-analytics, unemployment-analytics (2 members each)
-
-Produce sample user records:
-  ${SCRIPT_DIR}/produce-records
+Demo workloads:
+  Brokers:            3 (localhost:29092, localhost:29093, localhost:29094)
+  Demo records:       users, person, user-avro (producer + 2 consumers each)
+  Economic indexes:   economic-cpi, economic-gdp, economic-unemployment
+  Kafka Streams:      economic-cpi -> economic-cpi-1m-avg (1-minute tumbling average)
 
 Stop the stack:
   $(basename "$0") down
@@ -145,7 +166,7 @@ cmd_up() {
 	wait_for_schema_registry
 	create_test_topics
 	create_economic_topics
-	start_demo_consumers
+	start_demo_workloads
 	print_connection_details
 }
 
@@ -153,6 +174,14 @@ cmd_down() {
 	require_docker
 	compose --profile "${DEMO_PROFILE}" down
 	echo "Local environment stopped."
+}
+
+cmd_reset() {
+	require_docker
+	compose --profile "${DEMO_PROFILE}" down 2>/dev/null || true
+	docker run --rm -v "${COMPOSE_DIR}/volume:/volume" alpine sh -c \
+		"rm -rf /volume/kafka /volume/kafka-1 /volume/kafka-2 /volume/kafka-3"
+	echo "Broker data volumes wiped."
 }
 
 cmd_restart() {
@@ -177,6 +206,7 @@ main() {
 	up) cmd_up ;;
 	down) cmd_down ;;
 	restart) cmd_restart ;;
+	reset) cmd_reset ;;
 	status) cmd_status ;;
 	logs) cmd_logs ;;
 	-h | --help | help) usage ;;

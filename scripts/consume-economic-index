@@ -28,7 +28,8 @@ public class ConsumeEconomicIndex implements Callable<Integer> {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Option(names = "--bootstrap-servers", defaultValue = "localhost:29092",
+    @Option(names = "--bootstrap-servers",
+            defaultValue = "localhost:29092,localhost:29093,localhost:29094",
             description = "Kafka bootstrap servers.")
     String bootstrapServers;
 
@@ -40,6 +41,9 @@ public class ConsumeEconomicIndex implements Callable<Integer> {
 
     @Option(names = "--instance-id", required = true, description = "Unique consumer instance id.")
     String instanceId;
+
+    @Option(names = "--raw", description = "Log record values without parsing as EconomicIndex.")
+    boolean raw;
 
     public static void main(String... args) {
         System.exit(new CommandLine(new ConsumeEconomicIndex()).execute(args));
@@ -56,6 +60,10 @@ public class ConsumeEconomicIndex implements Callable<Integer> {
             while (running.get()) {
                 var records = consumer.poll(Duration.ofSeconds(1));
                 for (var record : records) {
+                    if (raw) {
+                        System.out.printf("[%s] key=%s value=%s%n", instanceId, record.key(), record.value());
+                        continue;
+                    }
                     var index = MAPPER.readValue(record.value(), EconomicIndex.class);
                     System.out.printf("[%s] %s %s (%s): %.2f %s [%s]%n",
                                       instanceId,

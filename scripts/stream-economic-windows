@@ -1,0 +1,150 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//REPOS mavencentral
+//DEPS info.picocli:picocli:4.6.3
+//DEPS org.apache.kafka:kafka-streams:4.3.0
+//DEPS com.fasterxml.jackson.core:jackson-databind:2.22.0
+//SOURCES model/EconomicIndex.java
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+
+import model.EconomicIndex;
+
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.TimeWindows;
+
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
+@Command(name = "stream-economic-windows", mixinStandardHelpOptions = true,
+        description = "Windowed average of CPI readings by country (Kafka Streams).")
+public class StreamEconomicWindows implements Callable<Integer> {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Duration WINDOW_SIZE = Duration.ofMinutes(1);
+    private static final Duration GRACE_PERIOD = Duration.ofSeconds(30);
+
+    @Option(names = "--bootstrap-servers",
+            defaultValue = "localhost:29092,localhost:29093,localhost:29094",
+            description = "Kafka bootstrap servers.")
+    String bootstrapServers;
+
+    @Option(names = "--input-topic", defaultValue = "economic-cpi", description = "Source topic.")
+    String inputTopic;
+
+    @Option(names = "--output-topic", defaultValue = "economic-cpi-1m-avg", description = "Windowed output topic.")
+    String outputTopic;
+
+    @Option(names = "--application-id", defaultValue = "economic-cpi-window-avg",
+            description = "Kafka Streams application id.")
+    String applicationId;
+
+    public static void main(String... args) {
+        System.exit(new CommandLine(new StreamEconomicWindows()).execute(args));
+    }
+
+    @Override
+    public Integer call() {
+        var props = streamsProperties();
+        var builder = new StreamsBuilder();
+
+        builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+               .selectKey((key, json) -> readIndex(json).countryCode())
+               .groupByKey(Grouped.with(Serdes.String(), Serdes.String()))
+               .windowedBy(TimeWindows.ofSizeAndGrace(WINDOW_SIZE, GRACE_PERIOD))
+               .aggregate(() -> "0|0.0",
+                          (country, json, aggregate) -> merge(aggregate, readIndex(json).value()),
+                          Materialized.with(Serdes.String(), Serdes.String()))
+               .toStream()
+               .map((windowedCountry, aggregate) -> KeyValue.pair(
+                       windowedCountry.key(),
+                       toWindowJson(windowedCountry.key(), windowedCountry.window().start(),
+                                    windowedCountry.window().end(), aggregate)))
+               .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+
+        var streams = new KafkaStreams(builder.build(), props);
+        var shutdown = new CountDownLatch(1);
+        streams.setStateListener((newState, oldState) -> System.out.printf("Streams state: %s -> %s%n", oldState, newState));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down Kafka Streams...");
+            streams.close(Duration.ofSeconds(10));
+            shutdown.countDown();
+        }));
+        streams.setUncaughtExceptionHandler(ex -> {
+            System.err.printf("Streams error: %s%n", ex.getMessage());
+            ex.printStackTrace();
+            return org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_APPLICATION;
+        });
+
+        streams.start();
+        System.out.printf("Kafka Streams running: %s -> %s (window=%s)%n",
+                          inputTopic, outputTopic, WINDOW_SIZE);
+
+        try {
+            shutdown.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return 0;
+    }
+
+    private Properties streamsProperties() {
+        var props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.AT_LEAST_ONCE);
+        props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
+        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, 1);
+        return props;
+    }
+
+    private static EconomicIndex readIndex(String json) {
+        try {
+            return MAPPER.readValue(json, EconomicIndex.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid economic index JSON", e);
+        }
+    }
+
+    private static String merge(String aggregate, double value) {
+        var parts = aggregate.split("\\|", 2);
+        var count = Integer.parseInt(parts[0]);
+        var sum = Double.parseDouble(parts[1]);
+        return "%d|%f".formatted(count + 1, sum + value);
+    }
+
+    private static String toWindowJson(String countryCode, long windowStart, long windowEnd, String aggregate) {
+        var parts = aggregate.split("\\|", 2);
+        var count = Integer.parseInt(parts[0]);
+        var sum = Double.parseDouble(parts[1]);
+        var average = count == 0 ? 0.0 : sum / count;
+        try {
+            return MAPPER.writeValueAsString(new WindowAverage(
+                    countryCode,
+                    windowStart,
+                    windowEnd,
+                    count,
+                    average,
+                    "economic-cpi-1m-avg"));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize window average", e);
+        }
+    }
+
+    private record WindowAverage(String countryCode, long windowStart, long windowEnd, int count, double average,
+                                 String indexCode) {
+    }
+}

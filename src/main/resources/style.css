@@ -241,7 +241,16 @@ WindowHead .window-title {
 	-fx-max-height: 32px;
 	-fx-padding: 0;
 	-fx-content-display: graphic-only;
-	-fx-background-color: #596475;
+	-fx-background-color: #e8eaed;
+}
+
+.screen-grid .table-view .table-action-text-button {
+	-fx-background-color: #e8eaed;
+	-fx-text-fill: #222222;
+	-fx-font-size: 12px;
+	-fx-padding: 4 10 4 10;
+	-fx-min-height: 28px;
+	-fx-pref-height: 28px;
 }
 
 .screen-grid .table-view .column-header .label:empty {
@@ -258,4 +267,31 @@ WindowHead .window-title {
 
 .main-window-view-header {
 	-fx-padding: 12 0 12 0;
+}
+
+.cluster-summary-bar {
+	-fx-padding: 4 0 8 0;
+}
+
+.cluster-stat-card {
+	-fx-background-color: #2a2a2a;
+	-fx-background-radius: 4;
+	-fx-padding: 8 12;
+}
+
+.cluster-stat-label {
+	-fx-text-fill: #aaaaaa;
+	-fx-font-size: 11px;
+}
+
+.cluster-stat-value {
+	-fx-text-fill: #ffffff;
+	-fx-font-size: 13px;
+	-fx-font-weight: bold;
+}
+
+.cluster-section-label {
+	-fx-text-fill: #cccccc;
+	-fx-font-size: 13px;
+	-fx-font-weight: bold;
 }

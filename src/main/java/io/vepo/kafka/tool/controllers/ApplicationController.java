@@ -1,6 +1,5 @@
 package io.vepo.kafka.tool.controllers;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -13,6 +12,7 @@ import io.vepo.kafka.tool.inspect.RecordBrowseService;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.service.SettingsService;
 import io.vepo.kafka.tool.stages.BrokerConfigurationStage;
+import io.vepo.kafka.tool.stages.BrokerRuntimeConfigStage;
 import io.vepo.kafka.tool.stages.RecordBrowseStage;
 import io.vepo.kafka.tool.stages.TopicSubscribeStage;
 import javafx.stage.Stage;
@@ -26,6 +26,8 @@ public class ApplicationController {
     private Consumer<BrokerStatus> connectionListener;
     private Runnable disconnectionListener;
     private ConsumerGroupsController consumerGroupsController;
+    private ClusterMonitorController clusterMonitorController;
+    private TopicsController topicsController;
 
     public ApplicationController() {
         this.adminService = new KafkaAdminService();
@@ -50,6 +52,14 @@ public class ApplicationController {
         return new ClusterConnectController(settingsService, this);
     }
 
+    public ClusterMonitorController createClusterMonitorController(Consumer<String> navigateToTopic) {
+        if (clusterMonitorController == null) {
+            clusterMonitorController = new ClusterMonitorController(adminService, this::disconnect, navigateToTopic,
+                                                                    this::openBrokerRuntimeConfig);
+        }
+        return clusterMonitorController;
+    }
+
     public ConsumerGroupsController createConsumerGroupsController() {
         if (consumerGroupsController == null) {
             consumerGroupsController = new ConsumerGroupsController(adminService, this::disconnect);
@@ -58,8 +68,11 @@ public class ApplicationController {
     }
 
     public TopicsController createTopicsController() {
-        return new TopicsController(adminService, settingsService, this::openSubscribeStage, this::openBrowseStage,
-                                    this::disconnect);
+        if (topicsController == null) {
+            topicsController = new TopicsController(adminService, settingsService, this::openSubscribeStage,
+                                                    this::openBrowseStage, this::disconnect);
+        }
+        return topicsController;
     }
 
     public void disconnect() {
@@ -78,6 +91,11 @@ public class ApplicationController {
         return settingsService;
     }
 
+    public void navigateToTopic(String topicName, Runnable selectTab) {
+        selectTab.run();
+        topicsController.selectTopic(topicName);
+    }
+
     public void onMainWindowResize(int width, int height) {
         settingsService.updateUi(ui -> {
             ui.getMainWindow().setWidth(width);
@@ -88,6 +106,11 @@ public class ApplicationController {
     public void openBrokerConfiguration(Stage owner) {
         var controller = new BrokerConfigController(settingsService, this);
         new BrokerConfigurationStage(controller, owner).showAndWait();
+    }
+
+    public void openBrokerRuntimeConfig(int brokerId, Stage owner) {
+        var controller = new BrokerRuntimeConfigController(adminService, brokerId);
+        new BrokerRuntimeConfigStage(controller, settingsService, owner).show();
     }
 
     private void openBrowseStage(String topic, Stage owner) {
@@ -110,6 +133,9 @@ public class ApplicationController {
     }
 
     public void shutdown() {
+        if (clusterMonitorController != null) {
+            clusterMonitorController.shutdown();
+        }
         if (consumerGroupsController != null) {
             consumerGroupsController.shutdown();
         }

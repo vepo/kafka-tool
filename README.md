@@ -22,4 +22,4 @@ UI building blocks are cataloged in [docs/UI_COMPONENTS.md](docs/UI_COMPONENTS.m
 mvn javafx:run
 ```
 
-Local Kafka stack: `./scripts/setup-local-env.sh` (bootstrap `localhost:29092`, Schema Registry `http://localhost:8081`).
+Local Kafka stack: `./scripts/setup-local-env.sh` (3 brokers on `localhost:29092,localhost:29093,localhost:29094`, Schema Registry `http://localhost:8081`).

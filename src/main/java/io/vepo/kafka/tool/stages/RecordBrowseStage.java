@@ -10,7 +10,7 @@ import io.vepo.kafka.tool.controls.EmptyStatePane;
 import io.vepo.kafka.tool.controls.ProgressStatusBar;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.builders.ResizePolicy;
-import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
+import static io.vepo.kafka.tool.controls.builders.UI.grid;
 import io.vepo.kafka.tool.inspect.TopicPartitionInfo;
 import io.vepo.kafka.tool.settings.KeySerializer;
 import io.vepo.kafka.tool.settings.ValueSerializer;
@@ -90,9 +90,9 @@ public class RecordBrowseStage extends AbstractKafkaToolStage {
         this.controller = controller;
         setTitle("Browse: " + controller.getTopic());
 
-        var gridBuilder = ScreenBuilder.grid()
-                                       .withViewHeader("Browse records",
-                                                       "Topic \"" + controller.getTopic() + "\". Fetch records by partition and offset.");
+        var gridBuilder = grid()
+                                .withViewHeader("Browse records",
+                                                "Topic \"" + controller.getTopic() + "\". Fetch records by partition and offset.");
         gridBuilder.getViewHeader().bindMessage(controller.viewMessage());
 
         var progressBar = new ProgressStatusBar(10);
