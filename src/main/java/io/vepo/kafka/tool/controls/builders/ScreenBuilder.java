@@ -11,6 +11,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import io.vepo.kafka.tool.controls.ViewHeader;
 import io.vepo.kafka.tool.controls.builders.ResizePolicy.FixedSizeResizePolicy;
 import io.vepo.kafka.tool.controls.helpers.WindowHelper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -20,6 +21,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -33,6 +35,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.util.Callback;
 
@@ -41,6 +44,7 @@ public interface ScreenBuilder {
         private int currentColumn;
         private int currentRow;
         private GridPane pane;
+        private ViewHeader viewHeader;
 
         private GridScreenBuilder() {
             pane = new GridPane();
@@ -160,13 +164,17 @@ public interface ScreenBuilder {
         @Override
         public Scene build() {
             var root = WindowHelper.rootControl();
-            root.setMain(pane);
+            root.setMain(wrapContent());
             return new Scene(root);
         }
 
         @Override
         public Scene build(int width, int height) {
-            return new Scene(pane, width, height);
+            return new Scene(wrapContent(), width, height);
+        }
+
+        public ViewHeader getViewHeader() {
+            return viewHeader;
         }
 
         public GridScreenBuilder newLine() {
@@ -178,6 +186,21 @@ public interface ScreenBuilder {
         public GridScreenBuilder skipCell() {
             currentColumn++;
             return this;
+        }
+
+        public GridScreenBuilder withViewHeader(String title, String description) {
+            viewHeader = new ViewHeader(title, description);
+            return this;
+        }
+
+        private Parent wrapContent() {
+            if (viewHeader == null) {
+                return pane;
+            }
+            var wrapper = new VBox();
+            wrapper.getChildren().addAll(viewHeader, pane);
+            VBox.setVgrow(pane, Priority.ALWAYS);
+            return wrapper;
         }
 
     }

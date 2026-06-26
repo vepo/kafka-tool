@@ -7,6 +7,7 @@ import static javafx.collections.FXCollections.observableArrayList;
 import io.vepo.kafka.tool.controllers.ConsumerGroupsController;
 import io.vepo.kafka.tool.controls.EmptyStatePane;
 import io.vepo.kafka.tool.controls.ProgressStatusBar;
+import io.vepo.kafka.tool.controls.ViewHeader;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
 import io.vepo.kafka.tool.inspect.ConsumerGroupMemberInfo;
 import io.vepo.kafka.tool.inspect.ConsumerGroupSummary;
@@ -27,9 +28,13 @@ public class ConsumerGroupsPane extends VBox {
         super(10);
         setFillWidth(true);
 
+        var viewHeader = new ViewHeader(
+                                        "Consumer groups",
+                                        "Inspect group membership and partition lag on the connected cluster.");
+        viewHeader.bindMessage(controller.viewMessage());
+
         var progressBar = new ProgressStatusBar(10);
         progressBar.loadingProperty().bind(controller.loadingProperty());
-        progressBar.statusTextProperty().bind(controller.statusTextProperty());
 
         var refreshButton = new Button("Refresh");
         refreshButton.setMaxWidth(Double.MAX_VALUE);
@@ -116,7 +121,7 @@ public class ConsumerGroupsPane extends VBox {
         HBox.setHgrow(detailsBox, Priority.ALWAYS);
         VBox.setVgrow(content, Priority.ALWAYS);
 
-        getChildren().addAll(progressBar, refreshButton, autoRefresh, content);
+        getChildren().addAll(viewHeader, progressBar, refreshButton, autoRefresh, content);
         controller.refreshGroups();
     }
 

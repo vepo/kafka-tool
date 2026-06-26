@@ -10,6 +10,7 @@ import io.vepo.kafka.tool.inspect.ConnectionResult;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.KafkaBrokerValidator;
 import io.vepo.kafka.tool.settings.service.SettingsService;
+import io.vepo.kafka.tool.viewmodels.ViewMessageModel;
 import javafx.collections.ObservableList;
 
 public class BrokerConfigController {
@@ -24,6 +25,7 @@ public class BrokerConfigController {
     private final ApplicationController applicationController;
 
     private final ObservableList<KafkaBroker> brokers = observableArrayList();
+    private final ViewMessageModel viewMessage = new ViewMessageModel();
 
     public BrokerConfigController(SettingsService settingsService, ApplicationController applicationController) {
         this.settingsService = settingsService;
@@ -68,7 +70,23 @@ public class BrokerConfigController {
     }
 
     public void testConnection(KafkaBroker broker, Consumer<ConnectionResult> callback) {
-        applicationController.testConnection(broker, callback);
+        var bootstrapCheck = KafkaBrokerValidator.validateBootstrapServers(broker.getBootStrapServers());
+        if (!bootstrapCheck.valid()) {
+            runLater(() -> {
+                viewMessage.showError(bootstrapCheck.message());
+                callback.accept(ConnectionResult.failed(bootstrapCheck.message()));
+            });
+            return;
+        }
+        viewMessage.showInfo("Testing connection to \"" + broker.getName() + "\"…");
+        applicationController.testConnection(broker, result -> runLater(() -> {
+            if (result.success()) {
+                viewMessage.showSuccess(result.message());
+            } else {
+                viewMessage.showError(result.message());
+            }
+            callback.accept(result);
+        }));
     }
 
     public KafkaBrokerValidator.ValidationResult validateBroker(KafkaBroker broker) {
@@ -77,6 +95,10 @@ public class BrokerConfigController {
 
     public KafkaBrokerValidator.ValidationResult validateDraft(KafkaBroker broker) {
         return KafkaBrokerValidator.validate(broker, getBackingBrokers());
+    }
+
+    public ViewMessageModel viewMessage() {
+        return viewMessage;
     }
 
 }

@@ -1,32 +1,18 @@
 package io.vepo.kafka.tool.controls.helpers;
 
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 
+/**
+ * @deprecated Use {@link ViewHeader} /
+ *             {@link io.vepo.kafka.tool.viewmodels.ViewMessageModel} for
+ *             status. Use {@link UserConfirmation} for destructive-action
+ *             prompts.
+ */
+@Deprecated
 public final class UserMessage {
 
-    private static void show(Stage owner, AlertType type, String title, String message) {
-        var alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        if (owner != null) {
-            alert.initOwner(owner);
-        }
-        alert.show();
-    }
-
-    public static void showError(Stage owner, String title, String message) {
-        show(owner, AlertType.ERROR, title, message);
-    }
-
-    public static void showInfo(Stage owner, String title, String message) {
-        show(owner, AlertType.INFORMATION, title, message);
-    }
-
-    public static void showWarning(Stage owner, String title, String message) {
-        show(owner, AlertType.WARNING, title, message);
+    public static boolean confirm(Stage owner, String title, String message) {
+        return UserConfirmation.confirm(owner, title, message);
     }
 
     private UserMessage() {}

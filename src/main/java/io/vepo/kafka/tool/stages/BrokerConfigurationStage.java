@@ -2,13 +2,11 @@ package io.vepo.kafka.tool.stages;
 
 import static io.vepo.kafka.tool.controls.builders.ResizePolicy.fixedSize;
 import static io.vepo.kafka.tool.controls.builders.ResizePolicy.grow;
-import static javafx.application.Platform.runLater;
 
 import io.vepo.kafka.tool.controllers.BrokerConfigController;
 import io.vepo.kafka.tool.controllers.BrokerConfigController.BrokerValidationException;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
-import io.vepo.kafka.tool.controls.helpers.UserMessage;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.KafkaBrokerValidator;
 import io.vepo.kafka.tool.settings.WindowSettings;
@@ -87,7 +85,10 @@ public class BrokerConfigurationStage extends AbstractKafkaToolStage {
     public BrokerConfigurationStage(BrokerConfigController controller, Stage owner) {
         super("kafkaBrokerConfig", owner, true, new WindowSettings(670, 512), controller.getSettingsService());
         setTitle("Kafka Brokers");
-        var gridBuilder = ScreenBuilder.grid();
+        var gridBuilder = ScreenBuilder.grid()
+                                       .withViewHeader("Kafka brokers",
+                                                       "Add and edit cluster profiles. Test each profile before connecting.");
+        gridBuilder.getViewHeader().bindMessage(controller.viewMessage());
         gridBuilder.addText("Name");
         var txtName = gridBuilder.addTextField();
         gridBuilder.newLine().addText("Bootstrap Servers");
@@ -101,13 +102,7 @@ public class BrokerConfigurationStage extends AbstractKafkaToolStage {
         var btnTest = gridBuilder.addButton("Test connection");
         btnTest.setOnAction(e -> controller.testConnection(
                                                            draftBroker(txtName, txtBootstrapServers, txtSchemaRegistryUrl),
-                                                           result -> runLater(() -> {
-                                                               if (result.success()) {
-                                                                   UserMessage.showInfo(owner, "Connection test", result.message());
-                                                               } else {
-                                                                   UserMessage.showError(owner, "Connection test", result.message());
-                                                               }
-                                                           })));
+                                                           result -> {}));
 
         @SuppressWarnings("unchecked")
         TableView<KafkaBroker>[] dataTableRef = new TableView[1];

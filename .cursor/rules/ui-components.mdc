@@ -12,7 +12,8 @@ The canonical UI component reference is **`docs/UI_COMPONENTS.md`**.
 
 1. Check `docs/UI_COMPONENTS.md` for an existing component or ScreenBuilder pattern.
 2. Prefer `ScreenBuilder` + cataloged widgets over ad-hoc `GridPane` in stages.
-3. Use `UserMessage` for user-visible errors and confirmations instead of raw `Alert` in views.
+3. Use `ViewHeader` + `ViewMessageModel` for status and errors; `UserConfirmation` only for destructive prompts (not raw `Alert` in views).
+4. Follow **`.cursor/rules/nielsen-heuristics.mdc`** — visibility, validation, plain-language labels, and FX-thread-safe feedback for every screen.
 
 ## When you MUST update the catalog
 
@@ -34,4 +35,4 @@ In the **same change** when you:
 - [ ] New UI uses cataloged components or doc was updated?
 - [ ] Empty lists use `EmptyStatePane`?
 - [ ] Loading states use `ProgressStatusBar` or controller loading property?
-- [ ] User errors surfaced via `UserMessage`?
+- [ ] User feedback surfaced via `ViewHeader` / `ViewMessageModel` (not modal alerts)?

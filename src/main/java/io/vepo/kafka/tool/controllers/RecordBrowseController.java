@@ -23,10 +23,9 @@ import io.vepo.kafka.tool.settings.KeySerializer;
 import io.vepo.kafka.tool.settings.ValueSerializer;
 import io.vepo.kafka.tool.settings.service.SettingsService;
 import io.vepo.kafka.tool.viewmodels.MessageRow;
+import io.vepo.kafka.tool.viewmodels.ViewMessageModel;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.collections.ObservableList;
 
 public class RecordBrowseController {
@@ -42,7 +41,7 @@ public class RecordBrowseController {
     private final ObservableList<MessageRow> messages = observableArrayList();
     private final ObservableList<TopicPartitionInfo> partitions = observableArrayList();
     private final BooleanProperty loading = new SimpleBooleanProperty(false);
-    private final StringProperty statusText = new SimpleStringProperty("");
+    private final ViewMessageModel viewMessage = new ViewMessageModel();
     private KeySerializer keySerializer;
     private ValueSerializer valueSerializer;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -67,7 +66,7 @@ public class RecordBrowseController {
 
     public void fetchRecords() {
         if (selectedPartition == null || valueSerializer == null || keySerializer == null) {
-            statusText.set("Select partition and serializers before fetching.");
+            viewMessage.showWarning("Select partition and serializers before fetching.");
             return;
         }
         clearMessages();
@@ -78,10 +77,10 @@ public class RecordBrowseController {
                                                  messages.add(MessageRow.from(record.message(), record.metadata(), keySerializer));
                                              }
                                              loading.set(false);
-                                             statusText.set("Fetched " + fetched.size() + " record(s).");
+                                             viewMessage.showSuccess("Fetched " + fetched.size() + " record(s).");
                                          }), error -> runLater(() -> {
                                              loading.set(false);
-                                             statusText.set("Fetch failed: " + error.getMessage());
+                                             viewMessage.showError("Fetch failed: " + error.getMessage());
                                              logger.error("Record fetch failed!", error);
                                          }));
     }
@@ -139,7 +138,7 @@ public class RecordBrowseController {
             if (!partitionList.isEmpty()) {
                 setSelectedPartition(partitionList.get(0));
             } else {
-                statusText.set("No partitions found for topic.");
+                viewMessage.showWarning("No partitions found for topic.");
             }
         }));
     }
@@ -170,7 +169,7 @@ public class RecordBrowseController {
         this.selectedPartition = partition;
         if (partition != null) {
             startOffset = partition.beginningOffset();
-            statusText.set("Partition " + partition.partition() + ": offsets " + partition.beginningOffset()
+            viewMessage.showInfo("Partition " + partition.partition() + ": offsets " + partition.beginningOffset()
                     + " .. " + (partition.endOffset() - 1));
         }
     }
@@ -188,8 +187,8 @@ public class RecordBrowseController {
         recordBrowseService.close();
     }
 
-    public StringProperty statusTextProperty() {
-        return statusText;
+    public ViewMessageModel viewMessage() {
+        return viewMessage;
     }
 
 }

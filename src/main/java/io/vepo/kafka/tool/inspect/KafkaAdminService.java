@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
+import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.KafkaFuture;
@@ -46,6 +47,14 @@ public class KafkaAdminService implements Closeable {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaAdminService.class);
 
+    private static Properties adminProperties(KafkaBroker kafkaBroker) {
+        var properties = new Properties();
+        properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
+        properties.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "8000");
+        properties.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "8000");
+        return properties;
+    }
+
     private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
                                    Consumer<Throwable> errorHandler) {
         operation.whenComplete((result, error) -> {
@@ -61,6 +70,7 @@ public class KafkaAdminService implements Closeable {
 
     private final ConsumerGroupService consumerGroupService = ConsumerGroupService.create();
     private BrokerStatus status;
+
     private AdminClient adminClient = null;
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -109,20 +119,18 @@ public class KafkaAdminService implements Closeable {
         executor.submit(() -> {
             try {
                 closeAdminClient();
-                var properties = new Properties();
-                properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
-                adminClient = AdminClient.create(properties);
-                adminClient.describeCluster().nodes().get(10, TimeUnit.SECONDS);
+                adminClient = AdminClient.create(adminProperties(kafkaBroker));
+                adminClient.describeCluster().nodes().get(8, TimeUnit.SECONDS);
                 connectedBroker = kafkaBroker;
                 status = BrokerStatus.CONNECTED;
-                callback.accept(ConnectionResult.connected());
+                callback.accept(ConnectionResult.connected(kafkaBroker.getName()));
                 watchers.forEach(consumer -> consumer.statusChanged(status));
             } catch (Exception e) {
                 logger.error("Could not connect to broker!", e);
                 closeAdminClient();
                 connectedBroker = null;
                 status = BrokerStatus.IDLE;
-                callback.accept(ConnectionResult.failed(e.getMessage()));
+                callback.accept(ConnectionResult.failed(e));
             }
         });
     }
@@ -237,15 +245,13 @@ public class KafkaAdminService implements Closeable {
     public void testConnection(KafkaBroker kafkaBroker, Consumer<ConnectionResult> callback) {
         executor.submit(() -> {
             try {
-                var properties = new Properties();
-                properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
-                try (var client = AdminClient.create(properties)) {
-                    client.describeCluster().nodes().get(10, TimeUnit.SECONDS);
-                    callback.accept(ConnectionResult.testOk());
+                try (var client = AdminClient.create(adminProperties(kafkaBroker))) {
+                    client.describeCluster().nodes().get(8, TimeUnit.SECONDS);
+                    callback.accept(ConnectionResult.testOk(kafkaBroker.getName()));
                 }
             } catch (Exception e) {
                 logger.error("Broker connection test failed!", e);
-                callback.accept(ConnectionResult.failed(e.getMessage()));
+                callback.accept(ConnectionResult.failed(e));
             }
         });
     }

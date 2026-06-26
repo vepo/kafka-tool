@@ -122,7 +122,7 @@ Config directory: `~/.kafka-tool/`
 |------|-----------|
 | Layout | `MainWindowPane`, `CentralizedPane`, `EmptyStatePane`, `ProgressStatusBar`, `WindowHead`, `TopicConsumerStatusBar` |
 | Builders | `ScreenBuilder`, `ResizePolicy` |
-| Helpers | `WindowHelper`, `ResizeHelper`, `UserMessage` |
+| Helpers | `WindowHelper`, `ResizeHelper`, `ViewHeader`, `UserConfirmation` |
 
 UI catalog: **`docs/UI_COMPONENTS.md`** (keep in sync when adding controls).
 

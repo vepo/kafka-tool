@@ -1,14 +1,13 @@
 package io.vepo.kafka.tool;
 
-import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
+import static io.vepo.kafka.tool.controls.helpers.UserConfirmation.confirm;
 
 import java.util.Objects;
 
 import io.vepo.kafka.tool.controllers.TopicsController;
+import io.vepo.kafka.tool.controls.ViewHeader;
 import io.vepo.kafka.tool.inspect.TopicInfo;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -36,14 +35,11 @@ public class TopicsPane extends VBox {
 
                 var emptyButton = new Button("Empty");
                 emptyButton.setOnAction(event -> {
-                    var alert = new Alert(CONFIRMATION, "All messages will be lost", ButtonType.OK, ButtonType.CANCEL);
-                    alert.setTitle("Do you really want to clear the topic?");
-                    alert.show();
-                    alert.resultProperty().addListener((obs, oldValue, newValue) -> {
-                        if (newValue == ButtonType.OK) {
-                            controller.emptyTopic(topic);
-                        }
-                    });
+                    var owner = (Stage) getScene().getWindow();
+                    if (confirm(owner, "Empty topic?",
+                                "All messages in \"" + topic.getName() + "\" will be permanently deleted.")) {
+                        controller.emptyTopic(topic);
+                    }
                 });
 
                 var browseButton = new Button("Browse");
@@ -73,7 +69,13 @@ public class TopicsPane extends VBox {
 
     public TopicsPane(TopicsController controller) {
         super();
+        setFillWidth(true);
         this.controller = controller;
+
+        var viewHeader = new ViewHeader(
+                                        "Topics",
+                                        "Browse, subscribe, or empty topics on the connected cluster.");
+        viewHeader.bindMessage(controller.viewMessage());
 
         listView = new ListView<>();
         listView.setItems(controller.getTopics());
@@ -90,7 +92,9 @@ public class TopicsPane extends VBox {
         var actions = new HBox(10, refreshButton, disconnectButton);
         actions.setFillHeight(true);
         HBox.setHgrow(refreshButton, Priority.ALWAYS);
-        getChildren().addAll(listView, actions);
+
+        VBox.setVgrow(listView, Priority.ALWAYS);
+        getChildren().addAll(viewHeader, listView, actions);
     }
 
 }

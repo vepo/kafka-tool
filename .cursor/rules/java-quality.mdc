@@ -8,10 +8,77 @@ alwaysApply: false
 
 ## Style and conventions
 
-- Match existing code: tabs for indentation in this project, `var` where type is obvious, static imports for constants.
+- Match existing code: tabs for indentation in this project, `var` where type is obvious.
 - Keep classes focused; prefer extending existing abstractions (`AbstractKafkaToolStage`, `KafkaAgnosticConsumer`, `ScreenBuilder`) over new parallel patterns.
 - Use SLF4J for logging (`LoggerFactory.getLogger`); no `System.out.println` in production code.
-- Prefer immutable DTOs in `inspect/` (`TopicInfo`, `KafkaMessage`); mutable state belongs in services or JavaFX nodes.
+- Mutable state belongs in services or JavaFX nodes; immutable data carriers belong in `inspect/` and `viewmodels/`.
+
+### Imports
+
+- Always import types; use the simple class name in code.
+- Fully qualified names are allowed **only** when two types share the same simple name (name collision).
+- Generated code (e.g. Protobuf) is exempt.
+
+```java
+// ❌ BAD
+var topics = java.util.List.of("orders");
+
+// ✅ GOOD
+import java.util.List;
+var topics = List.of("orders");
+
+// ✅ OK — name collision
+import java.util.Date;
+var created = new java.sql.Date(System.currentTimeMillis());
+```
+
+### Static imports
+
+- Static-import constants and static methods whose names read clearly at the call site.
+- Skip static import when the method name is ambiguous without its owning class (e.g. multiple `of`/`get` imports in one file).
+
+```java
+// ❌ BAD
+Platform.runLater(() -> table.getItems().add(row));
+
+// ✅ GOOD
+import static javafx.application.Platform.runLater;
+runLater(() -> table.getItems().add(row));
+
+// ✅ GOOD — meaningful assertion names
+import static org.junit.jupiter.api.Assertions.assertTrue;
+assertTrue(result.valid());
+```
+
+### Records
+
+- Prefer `record` for immutable data carriers (DTOs, results, config snapshots) over classes with getters only.
+- Use a class when you need mutable state, inheritance, or non-trivial lifecycle behaviour.
+
+```java
+// ✅ GOOD
+public record ConnectionResult(boolean success, String message, BrokerStatus status) {}
+```
+
+### Tell, Don't Ask
+
+- Objects should **do** work; callers should not pull state out only to branch elsewhere.
+- Put validation, transitions, and domain decisions on the type that owns the data (`inspect/`, `settings/`, `consumers/`).
+- Controllers orchestrate UI flow; they should not re-implement domain rules via getter chains.
+
+```java
+// ❌ BAD — ask, then act outside
+if (!broker.isValid()) {
+    showErrors(broker.validationErrors());
+    return;
+}
+connect(broker);
+
+// ✅ GOOD — tell the object to act
+broker.validate()
+    .ifValid(() -> connect(broker))
+    .ifInvalid(this::showErrors);
+```
 
 ## Layer boundaries
 

@@ -11,7 +11,7 @@ class ConnectionResultTest {
     @Test
     void connectedResultIsSuccessful() throws Throwable {
         try (var env = feature("Broker connection").scenario("Report successful connect").start()) {
-            var result = env.when("connection succeeds", ConnectionResult::connected);
+            var result = env.when("connection succeeds", () -> ConnectionResult.connected("local"));
             env.then("result is successful", () -> {
                 assertTrue(result.success());
                 assertTrue(result.message().contains("Connected"));

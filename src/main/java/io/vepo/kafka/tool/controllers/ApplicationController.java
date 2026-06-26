@@ -35,12 +35,14 @@ public class ApplicationController {
     public void connect(KafkaBroker broker, Consumer<ConnectionResult> resultCallback) {
         adminService.connect(broker, result -> {
             logger.info("Connect result: success={}, message={}", result.success(), result.message());
-            if (result.success() && connectionListener != null) {
-                connectionListener.accept(result.status());
-            }
-            if (resultCallback != null) {
-                resultCallback.accept(result);
-            }
+            javafx.application.Platform.runLater(() -> {
+                if (result.success() && connectionListener != null) {
+                    connectionListener.accept(result.status());
+                }
+                if (resultCallback != null) {
+                    resultCallback.accept(result);
+                }
+            });
         });
     }
 
@@ -61,11 +63,11 @@ public class ApplicationController {
     }
 
     public void disconnect() {
-        adminService.disconnect(status -> {
+        adminService.disconnect(status -> javafx.application.Platform.runLater(() -> {
             if (disconnectionListener != null) {
                 disconnectionListener.run();
             }
-        });
+        }));
     }
 
     public KafkaAdminService getAdminService() {
@@ -115,7 +117,11 @@ public class ApplicationController {
     }
 
     public void testConnection(KafkaBroker broker, Consumer<ConnectionResult> callback) {
-        adminService.testConnection(broker, callback);
+        adminService.testConnection(broker, result -> javafx.application.Platform.runLater(() -> {
+            if (callback != null) {
+                callback.accept(result);
+            }
+        }));
     }
 
 }

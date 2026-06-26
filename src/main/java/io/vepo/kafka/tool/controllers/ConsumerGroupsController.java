@@ -14,10 +14,9 @@ import io.vepo.kafka.tool.inspect.ConsumerGroupMemberInfo;
 import io.vepo.kafka.tool.inspect.ConsumerGroupSummary;
 import io.vepo.kafka.tool.inspect.KafkaAdminService;
 import io.vepo.kafka.tool.inspect.PartitionLagRow;
+import io.vepo.kafka.tool.viewmodels.ViewMessageModel;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.collections.ObservableList;
 
 public class ConsumerGroupsController {
@@ -29,7 +28,7 @@ public class ConsumerGroupsController {
     private final ObservableList<ConsumerGroupMemberInfo> members = observableArrayList();
     private final ObservableList<PartitionLagRow> lagRows = observableArrayList();
     private final BooleanProperty loading = new SimpleBooleanProperty(false);
-    private final StringProperty statusText = new SimpleStringProperty("");
+    private final ViewMessageModel viewMessage = new ViewMessageModel();
     private final BooleanProperty autoRefresh = new SimpleBooleanProperty(false);
     private ScheduledExecutorService refreshScheduler;
     private String selectedGroupId;
@@ -65,7 +64,7 @@ public class ConsumerGroupsController {
                                                                                                                               .mapToLong(PartitionLagRow::lag)
                                                                                                                               .sum();
                                                                                                                   loading.set(false);
-                                                                                                                  statusText.set("Group " + groupId
+                                                                                                                  viewMessage.showInfo("Group " + groupId
                                                                                                                           + ": total lag " + totalLag);
                                                                                                               })));
     }
@@ -79,7 +78,7 @@ public class ConsumerGroupsController {
         adminService.listConsumerGroups(groupList -> runLater(() -> {
             groups.setAll(groupList);
             loading.set(false);
-            statusText.set("Found " + groupList.size() + " consumer group(s).");
+            viewMessage.showSuccess("Found " + groupList.size() + " consumer group(s).");
         }));
     }
 
@@ -121,15 +120,15 @@ public class ConsumerGroupsController {
         }, 5, 5, TimeUnit.SECONDS);
     }
 
-    public StringProperty statusTextProperty() {
-        return statusText;
-    }
-
     private void stopAutoRefresh() {
         if (refreshScheduler != null) {
             refreshScheduler.shutdownNow();
             refreshScheduler = null;
         }
+    }
+
+    public ViewMessageModel viewMessage() {
+        return viewMessage;
     }
 
 }

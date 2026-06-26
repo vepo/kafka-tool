@@ -90,10 +90,13 @@ public class RecordBrowseStage extends AbstractKafkaToolStage {
         this.controller = controller;
         setTitle("Browse: " + controller.getTopic());
 
-        var gridBuilder = ScreenBuilder.grid();
+        var gridBuilder = ScreenBuilder.grid()
+                                       .withViewHeader("Browse records",
+                                                       "Topic \"" + controller.getTopic() + "\". Fetch records by partition and offset.");
+        gridBuilder.getViewHeader().bindMessage(controller.viewMessage());
+
         var progressBar = new ProgressStatusBar(10);
         progressBar.loadingProperty().bind(controller.loadingProperty());
-        progressBar.statusTextProperty().bind(controller.statusTextProperty());
         gridBuilder.addCustom(progressBar, 3);
 
         gridBuilder.newLine().addText("Partition");
@@ -134,7 +137,7 @@ public class RecordBrowseStage extends AbstractKafkaToolStage {
             try {
                 controller.setStartOffset(Long.parseLong(txtOffset.getText().trim()));
             } catch (NumberFormatException ex) {
-                controller.statusTextProperty().set("Invalid start offset.");
+                controller.viewMessage().showError("Invalid start offset. Enter a numeric offset.");
                 return;
             }
             controller.fetchRecords();

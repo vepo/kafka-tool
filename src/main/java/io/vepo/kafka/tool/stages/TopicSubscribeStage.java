@@ -94,7 +94,10 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
         this.controller = controller;
         setTitle("Topic: " + controller.getTopic());
 
-        var gridBuilder = ScreenBuilder.grid();
+        var gridBuilder = ScreenBuilder.grid()
+                                       .withViewHeader("Subscribe to topic",
+                                                       "Topic \"" + controller.getTopic() + "\". Choose serializers and press Start.");
+        gridBuilder.getViewHeader().bindMessage(controller.viewMessage());
         gridBuilder.addText("Key Serializer");
         cmbKeySerializer = gridBuilder.addComboBox(observableList(controller.getKeySerializers()), 2);
         if (controller.getKeySerializer() != null) {

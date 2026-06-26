@@ -172,3 +172,45 @@ WindowHead .window-title {
 .progress-status-bar .progress-bar {
 	-fx-accent: #738196;
 }
+
+.view-header {
+	-fx-background-color: #596475;
+	-fx-border-color: #444444;
+	-fx-border-width: 0 0 1 0;
+}
+
+.view-header-title {
+	-fx-text-fill: #FFFFFF;
+	-fx-font-size: 18px;
+	-fx-font-weight: bold;
+}
+
+.view-header-description {
+	-fx-text-fill: #d0d5dc;
+	-fx-font-size: 13px;
+}
+
+.view-header-message {
+	-fx-padding: 8 10 8 10;
+	-fx-font-size: 13px;
+}
+
+.view-header-message.info {
+	-fx-background-color: #4a5a6e;
+	-fx-text-fill: #FFFFFF;
+}
+
+.view-header-message.success {
+	-fx-background-color: #2d6a4f;
+	-fx-text-fill: #FFFFFF;
+}
+
+.view-header-message.warning {
+	-fx-background-color: #8a6d3b;
+	-fx-text-fill: #FFFFFF;
+}
+
+.view-header-message.error {
+	-fx-background-color: #8b2635;
+	-fx-text-fill: #FFFFFF;
+}

@@ -1,0 +1,67 @@
+---
+description: Nielsen usability heuristics for all Kafka Tool UI
+globs: "**/controls/**,**/stages/**,**/ClusterConnectPane.java,**/TopicsPane.java,**/ConsumerGroupsPane.java,**/KafkaManagerMainWindow.java"
+alwaysApply: false
+---
+
+# Nielsen Heuristics — Kafka Tool UI
+
+Every user-facing screen and control must satisfy [Jakob Nielsen's 10 usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/). Use this checklist when adding or changing UI.
+
+## 1. Visibility of system status
+
+- Long operations (connect, test, fetch, refresh) must show **in-progress** state: disable triggering controls, show `ProgressStatusBar` or status text.
+- Success and failure must be visible in the view **`ViewHeader` message area** (not modal dialogs).
+
+## 2. Match between system and the real world
+
+- Use plain language: "Test connection", "Connect to cluster", not cryptic labels like "Test".
+- Error messages must say what failed and what to check (bootstrap servers, Kafka running, firewall).
+
+## 3. User control and freedom
+
+- Provide **Disconnect** to return to the connect screen.
+- Destructive actions use confirmation (`UserConfirmation` with OK/Cancel).
+- Users can dismiss secondary windows normally.
+
+## 4. Consistency and standards
+
+- Primary actions use `FormButton` / `ScreenBuilder.addButton` styling from `style.css`.
+- Status and errors use `ViewHeader` + `ViewMessageModel` (not modal `Alert` for feedback).
+- Follow [Eclipse UI Guidelines](https://www.eclipse.org/articles/Article-UI-Guidelines/Index.html) and `docs/UI_COMPONENTS.md`.
+
+## 5. Error prevention
+
+- Disable Connect/Test when no cluster is selected or while an operation is running.
+- Validate broker fields before test/connect (`KafkaBrokerValidator`).
+
+## 6. Recognition rather than recall
+
+- Combo boxes show cluster **names**; forms use labels and placeholders (e.g. schema registry URL example).
+- Pre-select the first broker when only one profile exists.
+
+## 7. Flexibility and efficiency of use
+
+- **Test connection** before **Connect** for quick validation without entering the app.
+- Refresh and auto-refresh where lists are polled (consumer groups).
+
+## 8. Aesthetic and minimalist design
+
+- One primary action per row where possible; avoid duplicate controls.
+- Use `EmptyStatePane` for empty lists instead of blank tables.
+
+## 9. Help users recognize, diagnose, and recover from errors
+
+- Errors: title + short cause + recovery hint in `ViewHeader` message banner.
+- Inline validation via `FormValidationLabel` on broker forms.
+
+## 10. Help and documentation
+
+- Prompt text on fields documents expected format.
+- `docs/UI_COMPONENTS.md` documents reusable widgets; link complex flows in `docs/ARCHITECTURE.md`.
+
+## Implementation requirements
+
+- All UI updates run on the **JavaFX application thread** (`Platform.runLater`).
+- Controllers expose `ViewMessageModel` for connect, test, and operation feedback; views bind `ViewHeader` to them.
+- Use `UserConfirmation` only for destructive commitments (e.g. empty topic), not for status.

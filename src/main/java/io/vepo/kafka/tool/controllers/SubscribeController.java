@@ -22,6 +22,7 @@ import io.vepo.kafka.tool.settings.ValueSerializer;
 import io.vepo.kafka.tool.settings.service.SettingsService;
 import io.vepo.kafka.tool.viewmodels.ConsumerState;
 import io.vepo.kafka.tool.viewmodels.MessageRow;
+import io.vepo.kafka.tool.viewmodels.ViewMessageModel;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleLongProperty;
@@ -40,6 +41,7 @@ public class SubscribeController {
     private final ObservableList<MessageRow> messages = observableArrayList();
     private final ObjectProperty<ConsumerState> state = new SimpleObjectProperty<>(ConsumerState.IDLE);
     private final LongProperty offset = new SimpleLongProperty(0);
+    private final ViewMessageModel viewMessage = new ViewMessageModel();
     private KeySerializer keySerializer;
     private ValueSerializer valueSerializer;
 
@@ -142,6 +144,7 @@ public class SubscribeController {
                               () -> runLater(() -> state.set(ConsumerState.STOPPED)),
                               e -> runLater(() -> {
                                   state.set(ConsumerState.ERROR);
+                                  viewMessage.showError("Consumer error: " + e.getMessage());
                                   logger.error("Error subscribing to topic!", e);
                               }));
     }
@@ -152,6 +155,10 @@ public class SubscribeController {
 
     public void stopConsumer() {
         consumerService.stop();
+    }
+
+    public ViewMessageModel viewMessage() {
+        return viewMessage;
     }
 
 }

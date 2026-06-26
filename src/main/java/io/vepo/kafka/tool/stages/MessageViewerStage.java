@@ -12,7 +12,9 @@ public class MessageViewerStage extends AbstractKafkaToolStage {
         super("messageViewer", owner, false, new WindowSettings(512, 512), settingsService);
         setTitle("Key: " + key);
 
-        var gridBuilder = ScreenBuilder.grid();
+        var gridBuilder = ScreenBuilder.grid()
+                                       .withViewHeader("Message viewer",
+                                                       "Full message value for the selected record.");
         var viewer = gridBuilder.addTextArea();
         viewer.setText(value);
         viewer.setEditable(false);

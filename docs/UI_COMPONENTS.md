@@ -4,11 +4,14 @@ Last updated: 2026-06-25
 
 Reusable JavaFX building blocks for Kafka Tool. All UIs are programmatic (no FXML). Prefer these over ad-hoc layouts in stages.
 
+Follow [Eclipse UI Guidelines](https://www.eclipse.org/articles/Article-UI-Guidelines/Index.html): each view has a **title**, **description**, and **inline message area** for status (no modal dialogs for success/error).
+
 | Catalog id | Source | Purpose | Style / CSS |
 |------------|--------|---------|-------------|
 | `AppShell` | `WindowHelper`, `WindowHead`, `ResizeHelper` | Main window chrome: title bar, draggable/resizable undecorated frame | `WindowHead`, `.window-chrome-button` |
 | `MainNav` | `MainWindowPane` | Left sidebar tab navigation between main views | `MainWindowPane .button.selected` |
-| `CenteredPanel` | `CentralizedPane` | Vertically centered content (connect screen) | `ClusterConnectPane` background |
+| `ViewHeader` | `ViewHeader`, `ViewMessageModel` | Eclipse-style view title, description, inline info/success/warning/error banner | `.view-header`, `.view-header-message.*` |
+| `CenteredPanel` | `CentralizedPane` | Vertically centered content (legacy; prefer `ViewHeader` + `VBox`) | `ClusterConnectPane` background |
 | `DialogShell` | `AbstractKafkaToolStage` | Modal/non-modal secondary windows with persisted size | via `SettingsService` |
 | `FormGrid` | `ScreenBuilder.grid()` | Label + field grid for forms and dialogs | `.screen-grid` |
 | `FormLabel` | `ScreenBuilder.addText()` | Static form labels | `.form-label` |
@@ -20,25 +23,26 @@ Reusable JavaFX building blocks for Kafka Tool. All UIs are programmatic (no FXM
 | `DataTable` | `ScreenBuilder.addTableView()` + column builders | Sortable/editable tables with action columns | `.screen-grid .table-view` |
 | `ConsumerStatusBar` | `TopicConsumerStatusBar` | Live consumer status and current offset | default text |
 | `EmptyState` | `EmptyStatePane` | Placeholder when a list has no items | `.empty-state`, `.empty-state-message` |
-| `ProgressStatusBar` | `ProgressStatusBar` | Loading indicator + status text | `.progress-status-bar` |
-| `StatusAlert` | `UserMessage` | Standard error/info/warning dialogs | JavaFX `Alert` |
+| `ProgressStatusBar` | `ProgressStatusBar` | Loading indicator (bind `loading`; status text lives in `ViewHeader`) | `.progress-status-bar` |
+| `UserConfirmation` | `UserConfirmation` | Modal OK/Cancel for destructive actions only | JavaFX `Alert` CONFIRMATION |
 | `ResizePolicy` | `ResizePolicy` | Fixed vs proportional table column widths | n/a |
 
 ## Examples
 
-**Broker form** — `BrokerConfigurationStage` uses `FormGrid`, `FormTextField`, `FormValidationLabel`, `DataTable`.
+**Broker form** — `BrokerConfigurationStage` uses `ViewHeader`, `FormGrid`, `FormTextField`, `FormValidationLabel`, `DataTable`.
 
-**Topic subscribe** — `TopicSubscribeStage` uses `FormComboBox`, `DataTable`, `ConsumerStatusBar`.
+**Topic subscribe** — `TopicSubscribeStage` uses `ViewHeader`, `FormComboBox`, `DataTable`, `ConsumerStatusBar`.
 
-**Connect screen** — `ClusterConnectPane` uses `CenteredPanel`, `FormComboBox`, `FormButton`.
+**Connect screen** — `ClusterConnectPane` uses `ViewHeader`, `FormComboBox`, `FormButton`, `ProgressStatusBar`.
 
-**Consumer groups** — `ConsumerGroupsPane` uses `DataTable`, `EmptyState`, `ProgressStatusBar`, `FormButton`.
+**Consumer groups** — `ConsumerGroupsPane` uses `ViewHeader`, `DataTable`, `EmptyState`, `ProgressStatusBar`, `FormButton`.
 
-**Record browse** — `RecordBrowseStage` uses `FormGrid`, `FormComboBox`, `DataTable`, `EmptyState`.
+**Record browse** — `RecordBrowseStage` uses `ViewHeader`, `FormComboBox`, `DataTable`, `EmptyState`.
 
 ## Planned / avoid duplicating
 
 - Do not add raw `GridPane` layouts in stages when `FormGrid` suffices.
-- Do not instantiate `Alert` directly in views; use `StatusAlert` (`UserMessage`).
+- Do not use modal `Alert` for success/error/info; use `ViewHeader` + `ViewMessageModel`.
+- Use `UserConfirmation` only when the user must commit to a destructive action.
 
 When adding a component, update this table and set **Last updated**.

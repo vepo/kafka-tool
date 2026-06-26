@@ -10,6 +10,7 @@ import io.vepo.kafka.tool.inspect.KafkaAdminService.BrokerStatus;
 import io.vepo.kafka.tool.inspect.TopicInfo;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.service.SettingsService;
+import io.vepo.kafka.tool.viewmodels.ViewMessageModel;
 import javafx.collections.ObservableList;
 import javafx.stage.Stage;
 
@@ -21,6 +22,7 @@ public class TopicsController {
     private final BiConsumer<String, Stage> browseOpener;
     private final Runnable disconnectAction;
     private final ObservableList<TopicInfo> topics = observableArrayList();
+    private final ViewMessageModel viewMessage = new ViewMessageModel();
 
     public TopicsController(KafkaAdminService adminService, SettingsService settingsService,
                             BiConsumer<String, Stage> subscribeOpener, BiConsumer<String, Stage> browseOpener,
@@ -48,6 +50,7 @@ public class TopicsController {
     }
 
     public void emptyTopic(TopicInfo topic) {
+        viewMessage.showInfo("Emptying topic \"" + topic.getName() + "\"…");
         adminService.emptyTopic(topic);
     }
 
@@ -72,7 +75,15 @@ public class TopicsController {
     }
 
     public void refreshTopics() {
-        adminService.listTopics(topicList -> runLater(() -> topics.setAll(topicList)));
+        viewMessage.showInfo("Loading topics…");
+        adminService.listTopics(topicList -> runLater(() -> {
+            topics.setAll(topicList);
+            viewMessage.showSuccess("Found " + topicList.size() + " topic(s).");
+        }));
+    }
+
+    public ViewMessageModel viewMessage() {
+        return viewMessage;
     }
 
 }
