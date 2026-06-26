@@ -1,7 +1,6 @@
 package io.vepo.kafka.tool.controllers;
 
-import static javafx.application.Platform.runLater;
-import static javafx.collections.FXCollections.observableArrayList;
+import static javafx.collections.FXCollections.observableList;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -21,26 +20,41 @@ public class BrokerConfigController {
         }
     }
 
+    private static void trimBroker(KafkaBroker broker) {
+        if (broker.getName() != null) {
+            broker.setName(broker.getName().trim());
+        }
+        if (broker.getBootStrapServers() != null) {
+            broker.setBootStrapServers(broker.getBootStrapServers().trim());
+        }
+        if (broker.getSchemaRegistryUrl() != null) {
+            broker.setSchemaRegistryUrl(broker.getSchemaRegistryUrl().trim());
+        }
+    }
+
     private final SettingsService settingsService;
+
     private final ApplicationController applicationController;
 
-    private final ObservableList<KafkaBroker> brokers = observableArrayList();
+    private final ObservableList<KafkaBroker> brokers;
+
     private final ViewMessageModel viewMessage = new ViewMessageModel();
 
     public BrokerConfigController(SettingsService settingsService, ApplicationController applicationController) {
         this.settingsService = settingsService;
         this.applicationController = applicationController;
-        brokers.setAll(settingsService.kafka().getBrokers());
+        this.brokers = observableList(settingsService.kafka().getBrokers());
     }
 
     public void addBroker(KafkaBroker broker) {
-        settingsService.updateKafka(kafka -> kafka.getBrokers().add(broker));
-        runLater(() -> brokers.add(broker));
+        brokers.add(broker);
+        settingsService.updateKafka(kafka -> {});
     }
 
     public void applyBrokerEdit(KafkaBroker broker, Runnable applyChange) {
         var snapshot = new KafkaBroker(broker.getName(), broker.getBootStrapServers(), broker.getSchemaRegistryUrl());
         applyChange.run();
+        trimBroker(broker);
         var result = validateBroker(broker);
         if (!result.valid()) {
             broker.setName(snapshot.getName());
@@ -48,17 +62,16 @@ public class BrokerConfigController {
             broker.setSchemaRegistryUrl(snapshot.getSchemaRegistryUrl());
             throw new BrokerValidationException(result.message());
         }
-        settingsService.updateKafka(kafka -> kafka.setBrokers(getBackingBrokers()));
+        settingsService.updateKafka(kafka -> {});
     }
 
     public void deleteBroker(KafkaBroker broker) {
-        getBackingBrokers().remove(broker);
-        settingsService.updateKafka(kafka -> kafka.getBrokers().remove(broker));
-        runLater(() -> brokers.remove(broker));
+        brokers.remove(broker);
+        settingsService.updateKafka(kafka -> {});
     }
 
     public List<KafkaBroker> getBackingBrokers() {
-        return settingsService.kafka().getBrokers();
+        return brokers;
     }
 
     public ObservableList<KafkaBroker> getBrokers() {
@@ -72,29 +85,27 @@ public class BrokerConfigController {
     public void testConnection(KafkaBroker broker, Consumer<ConnectionResult> callback) {
         var bootstrapCheck = KafkaBrokerValidator.validateBootstrapServers(broker.getBootStrapServers());
         if (!bootstrapCheck.valid()) {
-            runLater(() -> {
-                viewMessage.showError(bootstrapCheck.message());
-                callback.accept(ConnectionResult.failed(bootstrapCheck.message()));
-            });
+            viewMessage.showError(bootstrapCheck.message());
+            callback.accept(ConnectionResult.failed(bootstrapCheck.message()));
             return;
         }
         viewMessage.showInfo("Testing connection to \"" + broker.getName() + "\"…");
-        applicationController.testConnection(broker, result -> runLater(() -> {
+        applicationController.testConnection(broker, result -> {
             if (result.success()) {
                 viewMessage.showSuccess(result.message());
             } else {
                 viewMessage.showError(result.message());
             }
             callback.accept(result);
-        }));
+        });
     }
 
     public KafkaBrokerValidator.ValidationResult validateBroker(KafkaBroker broker) {
-        return KafkaBrokerValidator.validate(broker, getBackingBrokers());
+        return KafkaBrokerValidator.validate(broker, brokers);
     }
 
     public KafkaBrokerValidator.ValidationResult validateDraft(KafkaBroker broker) {
-        return KafkaBrokerValidator.validate(broker, getBackingBrokers());
+        return KafkaBrokerValidator.validate(broker, brokers);
     }
 
     public ViewMessageModel viewMessage() {

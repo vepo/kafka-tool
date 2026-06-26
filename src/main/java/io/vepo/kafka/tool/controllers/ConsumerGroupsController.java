@@ -24,6 +24,7 @@ public class ConsumerGroupsController {
     private static final Logger logger = LoggerFactory.getLogger(ConsumerGroupsController.class);
 
     private final KafkaAdminService adminService;
+    private final Runnable disconnectAction;
     private final ObservableList<ConsumerGroupSummary> groups = observableArrayList();
     private final ObservableList<ConsumerGroupMemberInfo> members = observableArrayList();
     private final ObservableList<PartitionLagRow> lagRows = observableArrayList();
@@ -33,12 +34,17 @@ public class ConsumerGroupsController {
     private ScheduledExecutorService refreshScheduler;
     private String selectedGroupId;
 
-    public ConsumerGroupsController(KafkaAdminService adminService) {
+    public ConsumerGroupsController(KafkaAdminService adminService, Runnable disconnectAction) {
         this.adminService = adminService;
+        this.disconnectAction = disconnectAction;
     }
 
     public BooleanProperty autoRefreshProperty() {
         return autoRefresh;
+    }
+
+    public void disconnect() {
+        disconnectAction.run();
     }
 
     public ObservableList<ConsumerGroupSummary> getGroups() {

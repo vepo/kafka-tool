@@ -47,7 +47,7 @@ public interface Settings<T extends Settings<?>> {
     }
 
     static KafkaSettings kafka() {
-        return loadProperties(KafkaSettings.class, KafkaSettings.KAFKA_SETTINGS_FILE).orElseGet(KafkaSettings::new);
+        return KafkaSettingsCache.get();
     }
 
     static <T> Optional<T> loadProperties(Class<T> clz, String filename) {
@@ -67,6 +67,10 @@ public interface Settings<T extends Settings<?>> {
             }
         }
         return Optional.empty();
+    }
+
+    static void resetForTesting() {
+        KafkaSettingsCache.resetForTesting();
     }
 
     static <T extends Settings<?>> void save(String filename, T settings) {

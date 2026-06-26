@@ -27,7 +27,7 @@ public class ClusterConnectPane extends VBox {
     public ClusterConnectPane(ClusterConnectController controller) {
         super();
         setFillWidth(true);
-        setMinSize(512, 280);
+        setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         var viewHeader = new ViewHeader(
                                         "Connect to Kafka",

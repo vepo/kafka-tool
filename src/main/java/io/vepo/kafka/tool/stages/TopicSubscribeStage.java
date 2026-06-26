@@ -10,6 +10,7 @@ import io.vepo.kafka.tool.controllers.SubscribeController;
 import io.vepo.kafka.tool.controls.EmptyStatePane;
 import io.vepo.kafka.tool.controls.TopicConsumerStatusBar;
 import io.vepo.kafka.tool.controls.TopicConsumerStatusBar.Status;
+import io.vepo.kafka.tool.controls.helpers.TableActionIcons;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.builders.ResizePolicy;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
@@ -152,12 +153,13 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
                                   .notEditable()
                                   .resizePolicy(ResizePolicy.grow(1))
                                   .add()
-                                  .withButtons("Actions")
-                                  .button("View", message -> controller.formatValueForViewer(message)
-                                                                       .ifPresent(formatted -> new MessageViewerStage(message.getDisplayKey(), formatted,
-                                                                                                                      (Stage) getScene().getWindow(),
-                                                                                                                      controller.getSettingsService()).show()))
-                                  .resizePolicy(fixedSize(96))
+                                  .withButtons("")
+                                  .iconButton(TableActionIcons.view(), "View message", message -> controller.formatValueForViewer(message)
+                                                                                                            .ifPresent(formatted -> new MessageViewerStage(message.getDisplayKey(),
+                                                                                                                                                           formatted,
+                                                                                                                                                           (Stage) getScene().getWindow(),
+                                                                                                                                                           controller.getSettingsService()).show()))
+                                  .resizePolicy(fixedSize(40))
                                   .add()
                                   .build();
         messageTable.setDisable(true);

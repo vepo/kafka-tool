@@ -53,6 +53,7 @@ public class KafkaManagerMainWindow extends Application {
         primaryStage = stage;
 
         main = new MainWindowPane();
+        main.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         main.add("Topics", new TopicsPane(applicationController.createTopicsController()));
         main.add("Consumers", new ConsumerGroupsPane(applicationController.createConsumerGroupsController()));
 
@@ -60,7 +61,9 @@ public class KafkaManagerMainWindow extends Application {
         AbstractKafkaToolStage.setup(stage);
 
         root = WindowHelper.rootControl();
+        root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         clusterConnectPane = new ClusterConnectPane(applicationController.createClusterConnectController());
+        clusterConnectPane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         applicationController.setConnectionListener(status -> {
             if (status == BrokerStatus.CONNECTED) {
@@ -86,7 +89,8 @@ public class KafkaManagerMainWindow extends Application {
                               settingsService.ui().getMainWindow().getHeight());
         stage.setScene(scene);
         setupUi(stage, scene);
-        ResizeHelper.addResizeListener(stage);
+        ResizeHelper.addResizeListener(stage, stage.getMinWidth(), stage.getMinHeight(), Double.MAX_VALUE,
+                                       Double.MAX_VALUE);
         stage.show();
     }
 

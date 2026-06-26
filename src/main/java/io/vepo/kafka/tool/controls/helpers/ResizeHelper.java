@@ -45,11 +45,10 @@ public class ResizeHelper {
         private double startX = 0;
         private double startY = 0;
 
-        // Max and min sizes for controlled stage
-        private double minWidth;
-        private double maxWidth;
-        private double minHeight;
-        private double maxHeight;
+        private double minWidth = 0;
+        private double maxWidth = Double.MAX_VALUE;
+        private double minHeight = 0;
+        private double maxHeight = Double.MAX_VALUE;
         private double deltaX = 0;
         private double deltaY = 0;
 
@@ -155,14 +154,20 @@ public class ResizeHelper {
         }
 
         private void setStageHeight(double height) {
+            if (maxHeight <= 0) {
+                maxHeight = Double.MAX_VALUE;
+            }
             height = Math.min(height, maxHeight);
-            height = Math.max(height, minHeight);
+            height = Math.max(height, minHeight > 0 ? minHeight : stage.getMinHeight());
             stage.setHeight(height);
         }
 
         private void setStageWidth(double width) {
+            if (maxWidth <= 0) {
+                maxWidth = Double.MAX_VALUE;
+            }
             width = Math.min(width, maxWidth);
-            width = Math.max(width, minWidth);
+            width = Math.max(width, minWidth > 0 ? minWidth : stage.getMinWidth());
             stage.setWidth(width);
         }
 

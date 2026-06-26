@@ -3,9 +3,7 @@ package io.vepo.kafka.tool.controls.builders;
 import static javafx.collections.FXCollections.observableArrayList;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -31,7 +29,10 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.util.converter.DefaultStringConverter;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -173,6 +174,10 @@ public interface ScreenBuilder {
             return new Scene(wrapContent(), width, height);
         }
 
+        public GridPane getGridPane() {
+            return pane;
+        }
+
         public ViewHeader getViewHeader() {
             return viewHeader;
         }
@@ -201,6 +206,38 @@ public interface ScreenBuilder {
             wrapper.getChildren().addAll(viewHeader, pane);
             VBox.setVgrow(pane, Priority.ALWAYS);
             return wrapper;
+        }
+
+    }
+
+    public class StringTableViewColumnBuilder<R> extends TableViewColumnBuilder<R, String> {
+
+        private StringTableViewColumnBuilder(String columnHeader, TableViewBuilder<R> tableBuilder) {
+            super(columnHeader, tableBuilder);
+        }
+
+        public StringTableViewColumnBuilder<R> editableString(BiConsumer<R, String> onCommit) {
+            this.tableBuilder.tableView.setEditable(true);
+            this.column.setEditable(true);
+            this.column.setCellFactory(col -> new TextFieldTableCell<R, String>(new DefaultStringConverter()));
+            this.column.setOnEditCommit(e -> {
+                if (e.getRowValue() != null && e.getNewValue() != null) {
+                    onCommit.accept(e.getRowValue(), e.getNewValue());
+                }
+            });
+            return this;
+        }
+
+        public StringTableViewColumnBuilder<R> fromString(Function<R, String> getter) {
+            column.setCellValueFactory(cellData -> {
+                var item = cellData.getValue();
+                if (item == null) {
+                    return new SimpleStringProperty("");
+                }
+                var value = getter.apply(item);
+                return new SimpleStringProperty(value == null ? "" : value);
+            });
+            return this;
         }
 
     }
@@ -239,22 +276,36 @@ public interface ScreenBuilder {
             return new TableViewColumnBuilder<T, C>(columnHeader, this);
         }
 
+        public StringTableViewColumnBuilder<T> withStringColumn(String columnHeader) {
+            return new StringTableViewColumnBuilder<T>(columnHeader, this);
+        }
+
     }
 
     public class TableViewButtonsColumnBuilder<R> {
 
-        private class ActionButtonCell<T> extends TableCell<T, Void> {
-            private HBox box;
+        private static record ActionButton<T>(Node graphic, String label, String tooltip, Consumer<T> action) {}
 
-            public ActionButtonCell(Map<String, Consumer<T>> buttons) {
-                box = new HBox(10);
-                buttons.forEach((label, action) -> {
-                    var btn = new Button(label);
-                    btn.setMaxWidth(Double.MAX_VALUE);
-                    HBox.setHgrow(btn, Priority.ALWAYS);
-                    btn.setOnAction(e -> action.accept(getTableRow().itemProperty().get()));
+        private class ActionButtonCell extends TableCell<R, Void> {
+            private final HBox box;
+
+            public ActionButtonCell(List<ActionButton<R>> actions) {
+                box = new HBox(4);
+                box.getStyleClass().add("table-action-buttons");
+                for (var action : actions) {
+                    var btn = new Button();
+                    if (action.graphic() != null) {
+                        btn.setGraphic(action.graphic());
+                        btn.getStyleClass().add("table-action-icon-button");
+                    } else {
+                        btn.setText(action.label());
+                    }
+                    if (action.tooltip() != null && !action.tooltip().isBlank()) {
+                        btn.setTooltip(new Tooltip(action.tooltip()));
+                    }
+                    btn.setOnAction(e -> action.action().accept(getTableRow().itemProperty().get()));
                     box.getChildren().add(btn);
-                });
+                }
             }
 
             @Override
@@ -268,7 +319,7 @@ public interface ScreenBuilder {
             }
         }
 
-        private final Map<String, Consumer<R>> buttons;
+        private final List<ActionButton<R>> actions = new ArrayList<>();
         private TableColumn<R, Void> column;
         private ResizePolicy resizePolicy;
 
@@ -276,22 +327,26 @@ public interface ScreenBuilder {
 
         private TableViewButtonsColumnBuilder(String columnHeader, TableViewBuilder<R> tableBuilder) {
             column = new TableColumn<R, Void>(columnHeader);
-            buttons = new HashMap<>();
-            column.setCellFactory(colum -> new ActionButtonCell<R>(buttons));
             this.tableBuilder = tableBuilder;
         }
 
         public TableViewBuilder<R> add() {
             if (resizePolicy instanceof FixedSizeResizePolicy) {
-                ((FixedSizeResizePolicy) resizePolicy).setPenalty(10 * Math.max(buttons.size(), 2));
+                ((FixedSizeResizePolicy) resizePolicy).setPenalty(8 * Math.max(actions.size(), 1));
             }
-            tableBuilder.resizePolicies.add(Optional.ofNullable(resizePolicy).orElseGet(() -> ResizePolicy.grow(1)));
+            tableBuilder.resizePolicies.add(Optional.ofNullable(resizePolicy).orElseGet(() -> ResizePolicy.fixedSize(40)));
             tableBuilder.tableView.getColumns().add(column);
+            column.setCellFactory(colum -> new ActionButtonCell(actions));
             return tableBuilder;
         }
 
         public TableViewButtonsColumnBuilder<R> button(String label, Consumer<R> callback) {
-            this.buttons.put(label, callback);
+            actions.add(new ActionButton(null, label, label, callback));
+            return this;
+        }
+
+        public TableViewButtonsColumnBuilder<R> iconButton(Node graphic, String tooltip, Consumer<R> callback) {
+            actions.add(new ActionButton(graphic, null, tooltip, callback));
             return this;
         }
 
@@ -304,11 +359,11 @@ public interface ScreenBuilder {
 
     public class TableViewColumnBuilder<R, C> {
 
-        private TableColumn<R, C> column;
-        private ResizePolicy resizePolicy;
-        private TableViewBuilder<R> tableBuilder;
+        protected TableColumn<R, C> column;
+        protected ResizePolicy resizePolicy;
+        protected TableViewBuilder<R> tableBuilder;
 
-        private TableViewColumnBuilder(String columnHeader, TableViewBuilder<R> tableBuilder) {
+        protected TableViewColumnBuilder(String columnHeader, TableViewBuilder<R> tableBuilder) {
             column = new TableColumn<R, C>(columnHeader);
             this.tableBuilder = tableBuilder;
         }

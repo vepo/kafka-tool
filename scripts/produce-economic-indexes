@@ -1,0 +1,200 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//REPOS mavencentral
+//DEPS info.picocli:picocli:4.6.3
+//DEPS org.apache.kafka:kafka-clients:4.3.0
+//DEPS com.fasterxml.jackson.core:jackson-databind:2.22.0
+//SOURCES model/EconomicIndex.java
+//SOURCES serializers/JsonSerializer.java
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import model.EconomicIndex;
+
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
+import serializers.JsonSerializer;
+
+@Command(name = "produce-economic-indexes", mixinStandardHelpOptions = true,
+        description = "Fetch open economic indicators and publish them to Kafka.")
+public class ProduceEconomicIndexes implements Callable<Integer> {
+
+    private static final String WORLD_BANK = "World Bank Open Data";
+    private static final Duration POLL_INTERVAL = Duration.ofSeconds(60);
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+                                                     .connectTimeout(Duration.ofSeconds(15))
+                                                     .build();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Option(names = "--bootstrap-servers", defaultValue = "localhost:29092",
+            description = "Kafka bootstrap servers.")
+    String bootstrapServers;
+
+    public static void main(String... args) {
+        System.exit(new CommandLine(new ProduceEconomicIndexes()).execute(args));
+    }
+
+    @Override
+    public Integer call() throws Exception {
+        var running = new AtomicBoolean(true);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> running.set(false)));
+
+        try (var producer = producer()) {
+            while (running.get()) {
+                for (var index : fetchLatestIndexes()) {
+                    var record = new ProducerRecord<>(index.topic(), index.payload().countryCode(), index.payload());
+                    producer.send(record, (metadata, error) -> {
+                        if (Objects.nonNull(error)) {
+                            error.printStackTrace();
+                            return;
+                        }
+                        System.out.printf("Published %s/%s to %s partition=%d offset=%d%n",
+                                          index.payload().indexCode(),
+                                          index.payload().countryCode(),
+                                          metadata.topic(),
+                                          metadata.partition(),
+                                          metadata.offset());
+                    });
+                }
+                producer.flush();
+                Thread.sleep(POLL_INTERVAL.toMillis());
+            }
+        }
+        return 0;
+    }
+
+    private KafkaProducer<String, EconomicIndex> producer() {
+        var props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
+        return new KafkaProducer<>(props);
+    }
+
+    private List<IndexRecord> fetchLatestIndexes() {
+        var records = new ArrayList<IndexRecord>();
+        for (var spec : IndexSpec.values()) {
+            for (var country : CountrySpec.values()) {
+                fetchIndicator(spec, country).ifPresent(records::add);
+            }
+        }
+        return records;
+    }
+
+    private static java.util.Optional<IndexRecord> fetchIndicator(IndexSpec spec, CountrySpec country) {
+        var url = "https://api.worldbank.org/v2/country/%s/indicator/%s?format=json&per_page=1&mrv=1"
+                .formatted(country.code(), spec.indicatorId());
+        try {
+            var request = HttpRequest.newBuilder(URI.create(url))
+                                     .timeout(Duration.ofSeconds(20))
+                                     .GET()
+                                     .build();
+            var response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                System.err.printf("World Bank request failed (%d): %s%n", response.statusCode(), url);
+                return java.util.Optional.empty();
+            }
+            var root = MAPPER.readTree(response.body());
+            return parseObservation(root, spec, country);
+        } catch (Exception e) {
+            System.err.printf("Failed to fetch %s for %s: %s%n", spec.topic(), country.code(), e.getMessage());
+            return java.util.Optional.empty();
+        }
+    }
+
+    private static java.util.Optional<IndexRecord> parseObservation(JsonNode root,
+                                                                    IndexSpec spec,
+                                                                    CountrySpec country) {
+        if (!root.isArray() || root.size() < 2 || !root.get(1).isArray() || root.get(1).isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        var observation = root.get(1).get(0);
+        var valueNode = observation.get("value");
+        if (valueNode == null || valueNode.isNull()) {
+            return java.util.Optional.empty();
+        }
+        var payload = new EconomicIndex(
+                spec.indicatorId(),
+                observation.path("indicator").path("value").asText(spec.name()),
+                country.code(),
+                observation.path("country").path("value").asText(country.displayName()),
+                observation.path("date").asText("unknown"),
+                valueNode.asDouble(),
+                spec.unit(),
+                WORLD_BANK);
+        return java.util.Optional.of(new IndexRecord(spec.topic(), payload));
+    }
+
+    private enum IndexSpec {
+        CPI("economic-cpi", "FP.CPI.TOTL.ZG", "annual %"),
+        GDP("economic-gdp", "NY.GDP.MKTP.KD.ZG", "annual %"),
+        UNEMPLOYMENT("economic-unemployment", "SL.UEM.TOTL.ZS", "% of labor force");
+
+        private final String topic;
+        private final String indicatorId;
+        private final String unit;
+
+        IndexSpec(String topic, String indicatorId, String unit) {
+            this.topic = topic;
+            this.indicatorId = indicatorId;
+            this.unit = unit;
+        }
+
+        String topic() {
+            return topic;
+        }
+
+        String indicatorId() {
+            return indicatorId;
+        }
+
+        String unit() {
+            return unit;
+        }
+    }
+
+    private enum CountrySpec {
+        USA("USA", "United States"),
+        BRA("BRA", "Brazil"),
+        DEU("DEU", "Germany");
+
+        private final String code;
+        private final String displayName;
+
+        CountrySpec(String code, String displayName) {
+            this.code = code;
+            this.displayName = displayName;
+        }
+
+        String code() {
+            return code;
+        }
+
+        String displayName() {
+            return displayName;
+        }
+    }
+
+    private record IndexRecord(String topic, EconomicIndex payload) {
+    }
+}

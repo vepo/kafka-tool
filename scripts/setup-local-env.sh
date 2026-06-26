@@ -4,17 +4,23 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="${SCRIPT_DIR}/../resources/docker"
 COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.yaml"
+DEMO_PROFILE="demo"
 
 BOOTSTRAP_SERVERS="localhost:29092"
 SCHEMA_REGISTRY_URL="http://localhost:8081"
 TEST_TOPICS=(users person user-avro)
+ECONOMIC_TOPICS=(
+	"economic-cpi:2"
+	"economic-gdp:2"
+	"economic-unemployment:2"
+)
 
 usage() {
 	cat <<EOF
 Usage: $(basename "$0") [command]
 
 Commands:
-  up        Start Kafka and Schema Registry (default)
+  up        Start Kafka, Schema Registry, and demo consumers (default)
   down      Stop and remove containers
   restart   Restart the local stack
   status    Show container status
@@ -23,6 +29,10 @@ Commands:
 Connection details (after 'up'):
   Bootstrap servers:  ${BOOTSTRAP_SERVERS}
   Schema Registry:    ${SCHEMA_REGISTRY_URL}
+
+Demo data (World Bank open economic indexes):
+  Topics:             economic-cpi, economic-gdp, economic-unemployment
+  Consumer groups:    cpi-analytics (2), gdp-analytics (2), unemployment-analytics (2)
 EOF
 }
 
@@ -69,18 +79,38 @@ wait_for_schema_registry() {
 	exit 1
 }
 
+create_topic() {
+	local topic="$1"
+	local partitions="${2:-1}"
+
+	compose exec -T kafka kafka-topics.sh \
+		--bootstrap-server localhost:9092 \
+		--create \
+		--if-not-exists \
+		--topic "${topic}" \
+		--partitions "${partitions}" \
+		--replication-factor 1 >/dev/null
+	echo "  - ${topic} (${partitions} partition(s))"
+}
+
 create_test_topics() {
 	echo "Creating test topics..."
 	for topic in "${TEST_TOPICS[@]}"; do
-		compose exec -T kafka kafka-topics.sh \
-			--bootstrap-server localhost:9092 \
-			--create \
-			--if-not-exists \
-			--topic "${topic}" \
-			--partitions 1 \
-			--replication-factor 1 >/dev/null
-		echo "  - ${topic}"
+		create_topic "${topic}" 1
 	done
+}
+
+create_economic_topics() {
+	echo "Creating economic index topics..."
+	for entry in "${ECONOMIC_TOPICS[@]}"; do
+		IFS=':' read -r topic partitions <<< "${entry}"
+		create_topic "${topic}" "${partitions}"
+	done
+}
+
+start_demo_consumers() {
+	echo "Starting economic index producer and consumers (JBang)..."
+	compose --profile "${DEMO_PROFILE}" up -d
 }
 
 print_connection_details() {
@@ -96,7 +126,11 @@ Example broker profile for Kafka Tool:
   Bootstrap servers: ${BOOTSTRAP_SERVERS}
   Schema Registry:   ${SCHEMA_REGISTRY_URL}
 
-Produce sample records:
+Demo economic indexes (World Bank open data):
+  Topics:             economic-cpi, economic-gdp, economic-unemployment
+  Consumer groups:    cpi-analytics, gdp-analytics, unemployment-analytics (2 members each)
+
+Produce sample user records:
   ${SCRIPT_DIR}/produce-records
 
 Stop the stack:
@@ -110,29 +144,31 @@ cmd_up() {
 	wait_for_kafka
 	wait_for_schema_registry
 	create_test_topics
+	create_economic_topics
+	start_demo_consumers
 	print_connection_details
 }
 
 cmd_down() {
 	require_docker
-	compose down
+	compose --profile "${DEMO_PROFILE}" down
 	echo "Local environment stopped."
 }
 
 cmd_restart() {
 	require_docker
-	compose down
+	compose --profile "${DEMO_PROFILE}" down
 	cmd_up
 }
 
 cmd_status() {
 	require_docker
-	compose ps
+	compose --profile "${DEMO_PROFILE}" ps
 }
 
 cmd_logs() {
 	require_docker
-	compose logs -f
+	compose --profile "${DEMO_PROFILE}" logs -f
 }
 
 main() {

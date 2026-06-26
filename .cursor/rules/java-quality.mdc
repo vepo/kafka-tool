@@ -80,7 +80,24 @@ broker.validate()
     .ifInvalid(this::showErrors);
 ```
 
-## Layer boundaries
+### String formatting
+
+- Avoid string concatenation with `+` for dynamic messages; use a format template and `.formatted(...)`.
+- For SLF4J logging, use parameterized messages (`log.info("Topic {} failed", topic)`) — not concatenation or `.formatted()`.
+
+```java
+// ❌ BAD
+var message = "Label: " + label;
+throw new IllegalStateException("Failed on topic " + topic + ": " + cause.getMessage());
+
+// ✅ GOOD
+var message = "Label: %s".formatted(label);
+throw new IllegalStateException("Failed on topic %s: %s".formatted(topic, cause.getMessage()));
+
+// ✅ GOOD — logging
+log.warn("Failed on topic {}", topic, cause);
+```
+
 
 ```java
 // ❌ BAD — Kafka client in UI stage

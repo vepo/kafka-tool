@@ -1,6 +1,6 @@
 # Kafka Tool — Architecture
 
-Last updated: 2026-06-25
+Last updated: 2026-06-26
 
 ## Overview
 
@@ -234,8 +234,10 @@ Required for Avro and Protobuf; optional for JSON Schema. URL from `KafkaBroker.
 |---------|-------|-----------|
 | Kafka | `vepo/kafka:latest` (KRaft) | 29092 |
 | Schema Registry | `confluentinc/cp-schema-registry:8.3.0` | 8081 |
+| Economic index producer | `jbangdev/jbang` (profile `demo`) | — |
+| Economic index consumers | `jbangdev/jbang` × 6 (2 per index topic) | — |
 
-Example broker profile: bootstrap `localhost:29092`, registry `http://localhost:8081`.
+Demo profile (`./scripts/setup-local-env.sh up`) publishes World Bank open-data indicators to `economic-cpi`, `economic-gdp`, and `economic-unemployment`. JBang scripts under `scripts/` run in containers via the official JBang image; consumer groups `cpi-analytics`, `gdp-analytics`, and `unemployment-analytics` each have two members.
 
 ## Build artifacts
 

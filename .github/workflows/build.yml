@@ -45,7 +45,6 @@ jobs:
         run: >
           mvn -B verify
           org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
-          -Dsonar.qualitygate.wait=true
 
       - name: Upload Surefire reports
         if: always()

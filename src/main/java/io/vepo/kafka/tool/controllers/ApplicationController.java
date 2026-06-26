@@ -52,7 +52,7 @@ public class ApplicationController {
 
     public ConsumerGroupsController createConsumerGroupsController() {
         if (consumerGroupsController == null) {
-            consumerGroupsController = new ConsumerGroupsController(adminService);
+            consumerGroupsController = new ConsumerGroupsController(adminService, this::disconnect);
         }
         return consumerGroupsController;
     }

@@ -1,3 +1,23 @@
+x-jbang: &jbang
+  image: jbangdev/jbang:latest
+  environment:
+    TRUST: all
+  volumes:
+    - ../../scripts:/workspace/scripts:ro
+  working_dir: /workspace
+  depends_on:
+    kafka:
+      condition: service_healthy
+  restart: unless-stopped
+
+x-consumer: &consumer
+  <<: *jbang
+  profiles: [demo]
+  command:
+    - scripts/consume-economic-index
+    - --bootstrap-servers
+    - kafka:9092
+
 services:
   kafka:
     image: vepo/kafka:latest
@@ -38,3 +58,96 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+  economic-index-producer:
+    <<: *jbang
+    profiles: [demo]
+    container_name: kafka-tool-economic-producer
+    command:
+      - scripts/produce-economic-indexes
+      - --bootstrap-servers
+      - kafka:9092
+
+  cpi-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-cpi-consumer-1
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka:9092
+      - --topic
+      - economic-cpi
+      - --group
+      - cpi-analytics
+      - --instance-id
+      - "1"
+
+  cpi-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-cpi-consumer-2
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka:9092
+      - --topic
+      - economic-cpi
+      - --group
+      - cpi-analytics
+      - --instance-id
+      - "2"
+
+  gdp-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-gdp-consumer-1
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka:9092
+      - --topic
+      - economic-gdp
+      - --group
+      - gdp-analytics
+      - --instance-id
+      - "1"
+
+  gdp-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-gdp-consumer-2
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka:9092
+      - --topic
+      - economic-gdp
+      - --group
+      - gdp-analytics
+      - --instance-id
+      - "2"
+
+  unemployment-consumer-1:
+    <<: *consumer
+    container_name: kafka-tool-unemployment-consumer-1
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka:9092
+      - --topic
+      - economic-unemployment
+      - --group
+      - unemployment-analytics
+      - --instance-id
+      - "1"
+
+  unemployment-consumer-2:
+    <<: *consumer
+    container_name: kafka-tool-unemployment-consumer-2
+    command:
+      - scripts/consume-economic-index
+      - --bootstrap-servers
+      - kafka:9092
+      - --topic
+      - economic-unemployment
+      - --group
+      - unemployment-analytics
+      - --instance-id
+      - "2"

@@ -7,6 +7,7 @@ import io.vepo.kafka.tool.controllers.BrokerConfigController;
 import io.vepo.kafka.tool.controllers.BrokerConfigController.BrokerValidationException;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
+import io.vepo.kafka.tool.controls.helpers.TableActionIcons;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 import io.vepo.kafka.tool.settings.KafkaBrokerValidator;
 import io.vepo.kafka.tool.settings.WindowSettings;
@@ -14,7 +15,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Stage;
 
 public class BrokerConfigurationStage extends AbstractKafkaToolStage {
@@ -25,7 +25,10 @@ public class BrokerConfigurationStage extends AbstractKafkaToolStage {
         try {
             controller.applyBrokerEdit(broker, applyChange);
             clearValidation(validationLabel, txtName, txtBootstrapServers, txtSchemaRegistryUrl);
+            controller.viewMessage().showSuccess("Broker \"" + broker.getName() + "\" updated.");
+            dataTable.refresh();
         } catch (BrokerValidationException e) {
+            controller.viewMessage().showError(e.getMessage());
             showValidation(validationLabel, broker, controller, e.getMessage(), txtName, txtBootstrapServers,
                            txtSchemaRegistryUrl);
             dataTable.refresh();
@@ -108,41 +111,39 @@ public class BrokerConfigurationStage extends AbstractKafkaToolStage {
         TableView<KafkaBroker>[] dataTableRef = new TableView[1];
         dataTableRef[0] = gridBuilder.newLine()
                                      .<KafkaBroker>addTableView(2)
-                                     .<String>withColumn("Name")
-                                     .fromProperty("name")
-                                     .editable(TextFieldTableCell.<KafkaBroker>forTableColumn(),
-                                               (broker, value) -> applyTableEdit(controller, broker, () -> broker.setName(value),
-                                                                                 validationLabel, dataTableRef[0], txtName, txtBootstrapServers,
-                                                                                 txtSchemaRegistryUrl))
+                                     .withStringColumn("Name")
+                                     .fromString(KafkaBroker::getName)
+                                     .editableString((broker, value) -> applyTableEdit(controller, broker, () -> broker.setName(value),
+                                                                                       validationLabel, dataTableRef[0], txtName, txtBootstrapServers,
+                                                                                       txtSchemaRegistryUrl))
                                      .notResizable()
                                      .reorderable()
                                      .resizePolicy(fixedSize(128))
                                      .add()
-                                     .<String>withColumn("Bootstrap Servers")
-                                     .fromProperty("bootStrapServers")
-                                     .editable(TextFieldTableCell.<KafkaBroker>forTableColumn(),
-                                               (broker, value) -> applyTableEdit(controller, broker, () -> broker.setBootStrapServers(value),
-                                                                                 validationLabel, dataTableRef[0], null, null, null))
+                                     .withStringColumn("Bootstrap Servers")
+                                     .fromString(KafkaBroker::getBootStrapServers)
+                                     .editableString((broker, value) -> applyTableEdit(controller, broker, () -> broker.setBootStrapServers(value),
+                                                                                       validationLabel, dataTableRef[0], null, null, null))
                                      .resizePolicy(grow(1))
                                      .notResizable()
                                      .notReorderable()
                                      .add()
-                                     .<String>withColumn("Schema Registry URL")
-                                     .fromProperty("schemaRegistryUrl")
-                                     .editable(TextFieldTableCell.<KafkaBroker>forTableColumn(),
-                                               (broker, value) -> applyTableEdit(controller, broker, () -> broker.setSchemaRegistryUrl(value),
-                                                                                 validationLabel, dataTableRef[0], null, null, null))
+                                     .withStringColumn("Schema Registry URL")
+                                     .fromString(KafkaBroker::getSchemaRegistryUrl)
+                                     .editableString((broker, value) -> applyTableEdit(controller, broker, () -> broker.setSchemaRegistryUrl(value),
+                                                                                       validationLabel, dataTableRef[0], null, null, null))
                                      .resizePolicy(fixedSize(128))
                                      .notResizable()
                                      .notReorderable()
                                      .add()
-                                     .withButtons("Actions")
-                                     .button("Delete", broker -> {
+                                     .withButtons("")
+                                     .iconButton(TableActionIcons.delete(), "Delete broker", broker -> {
                                          controller.deleteBroker(broker);
+                                         controller.viewMessage().showInfo("Broker \"" + broker.getName() + "\" removed.");
                                          clearValidation(validationLabel, txtName, txtBootstrapServers, txtSchemaRegistryUrl);
                                          refreshAddButtonState(controller, txtName, txtBootstrapServers, txtSchemaRegistryUrl, btnAdd);
                                      })
-                                     .resizePolicy(fixedSize(64))
+                                     .resizePolicy(fixedSize(40))
                                      .add()
                                      .build();
         var dataTable = dataTableRef[0];

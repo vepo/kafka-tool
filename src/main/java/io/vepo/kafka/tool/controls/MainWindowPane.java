@@ -17,6 +17,7 @@ public class MainWindowPane extends Pane {
 
     public MainWindowPane() {
         counter = 0;
+        setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
     }
 
     public void add(String label, Node viewer) {
@@ -47,6 +48,9 @@ public class MainWindowPane extends Pane {
         btn.getProperties().put(POSITION, counter++);
         btn.getProperties().put(VIEWER, false);
         btn.getProperties().put(SELECTED, selected);
+        if (viewer instanceof javafx.scene.layout.Region region) {
+            region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        }
         getChildren().addAll(btn, viewer);
     }
 

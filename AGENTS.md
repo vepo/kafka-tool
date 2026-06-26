@@ -89,9 +89,16 @@ Bump versions in `pom.xml` properties only; keep Kafka and Confluent versions al
 
 Follow `.cursor/rules/java-quality.mdc` for all Java changes.
 Follow `.cursor/rules/tdd-gherkin.mdc` for tests and new features (Gherkin scenario first).
+Follow `.cursor/rules/project-scripts.mdc` for scripts and automation.
+
+## Scripts
+
+- Do **not** use Python, Node.js, or other general-purpose script languages — use **JBang** instead (see `scripts/produce-records`).
+- **Bash** scripts are allowed (e.g. `scripts/setup-local-env.sh` for Docker Compose).
 
 ## What not to do
 
+- Do not use Python, Node.js, or similar script runtimes for tooling in this repo.
 - Do not commit secrets or local `~/.kafka-tool/` config.
 - Do not add FXML unless the project explicitly moves to FXML.
 - Do not call removed Kafka 3.x APIs (e.g. `DescribeTopicsResult.all()` — use `allTopicNames()`).

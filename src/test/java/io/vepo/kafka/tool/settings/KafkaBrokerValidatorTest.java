@@ -39,6 +39,16 @@ class KafkaBrokerValidatorTest {
     }
 
     @Test
+    void acceptsSameBrokerNameWhenEditingExistingBroker() throws Throwable {
+        try (var env = feature(FEATURE).scenario("Allow keeping the same broker name on edit").start()) {
+            var broker = env.given("a broker named Local", new KafkaBroker("Local", "localhost:9092", ""));
+            var result = env.when("the name is validated against the same broker instance",
+                                  () -> validateName("Local", broker, of(broker)));
+            env.then("validation succeeds", () -> assertTrue(result.valid()));
+        }
+    }
+
+    @Test
     void acceptsValidBroker() throws Throwable {
         try (var env = feature(FEATURE).scenario("Accept a valid broker profile").start()) {
             var broker = env.given("a broker with name, bootstrap servers, and schema registry URL",
