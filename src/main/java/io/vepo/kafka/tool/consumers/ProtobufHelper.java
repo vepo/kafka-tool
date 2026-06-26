@@ -1,4 +1,4 @@
-package io.vepo.kafka.tool.controls.helpers;
+package io.vepo.kafka.tool.consumers;
 
 import java.util.Comparator;
 import java.util.List;
@@ -121,7 +121,6 @@ public class ProtobufHelper {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private static void fillJsonNode(ObjectNode jsonValue, Object object, ValueDescriptor field) {
-//        System.out.println("Field: " + field + " value: " + object);
 	if (object instanceof Integer) {
 	    jsonValue.put(field.getName(), ((Number) object).intValue());
 	} else if (object instanceof Double) {
@@ -187,17 +186,16 @@ public class ProtobufHelper {
 		((List) object).stream().forEachOrdered(item -> list.add(((EnumValueDescriptor) item).toString()));
 		break;
 	    default:
-		System.out.println("Field type=" + field.getType());
+		logger.warn("Unhandled protobuf field type: {}", field.getType());
 	    }
 	    jsonValue.set(field.getName(), list);
 	} else {
-	    System.out.println(field.getName() + "->" + object + " Type: " + object.getClass());
+	    logger.warn("Unhandled protobuf value for field {}: type {}", field.getName(), object.getClass());
 	}
 
     }
 
     public static String toJson(Message value) {
-	System.out.println("Source: " + value);
 	try {
 	    return mapper.writeValueAsString(toJsonNode(value));
 	} catch (JsonProcessingException e) {

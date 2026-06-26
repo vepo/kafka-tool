@@ -2,16 +2,12 @@ package io.vepo.kafka.tool;
 
 import static javafx.application.Platform.runLater;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import io.vepo.kafka.tool.controllers.ApplicationController;
 import io.vepo.kafka.tool.controls.MainWindowPane;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.helpers.ResizeHelper;
 import io.vepo.kafka.tool.controls.helpers.WindowHelper;
-import io.vepo.kafka.tool.inspect.KafkaAdminService;
 import io.vepo.kafka.tool.inspect.KafkaAdminService.BrokerStatus;
-import io.vepo.kafka.tool.settings.Settings;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -21,7 +17,6 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 public class KafkaManagerMainWindow extends Application {
-    private static final Logger logger = LoggerFactory.getLogger(KafkaManagerMainWindow.class);
 
     public static void main(String[] args) {
 	Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -33,12 +28,15 @@ public class KafkaManagerMainWindow extends Application {
 	launch();
     }
 
-    private KafkaAdminService adminService = new KafkaAdminService();
+    private ApplicationController applicationController;
 
     @Override
     public void start(Stage stage) throws Exception {
+	applicationController = new ApplicationController();
+	var settingsService = applicationController.getSettingsService();
+
 	var main = new MainWindowPane();
-	var topicsPane = new TopicsPane(adminService);
+	var topicsPane = new TopicsPane(applicationController.createTopicsController());
 	main.add("Topics", topicsPane);
 	main.add("Consumers", new Text("Consumers Pane"));
 	stage.initStyle(StageStyle.UNDECORATED);
@@ -46,23 +44,27 @@ public class KafkaManagerMainWindow extends Application {
 	AbstractKafkaToolStage.setup(stage);
 
 	var root = WindowHelper.rootControl();
-	var clusterConnectPane = new ClusterConnectPane(kafkaCluster -> adminService.connect(kafkaCluster, status -> {
-	    logger.info("Connected? status={}", status);
+	var clusterConnectController = applicationController.createClusterConnectController();
+	var clusterConnectPane = new ClusterConnectPane(clusterConnectController);
+
+	applicationController.setConnectionListener(status -> {
 	    if (status == BrokerStatus.CONNECTED) {
 		runLater(() -> {
-		    stage.setTitle("Kafka Tool - Connected: " + kafkaCluster.getName());
+		    var broker = applicationController.getAdminService().connectedBroker();
+		    stage.setTitle("Kafka Tool - Connected: " + broker.getName());
 		    root.setMain(main);
 		});
 	    }
-	}));
+	});
+
 	root.setMain(clusterConnectPane);
 	stage.setMinWidth(560);
 	stage.setMinHeight(360);
 	stage.setTitle("Kafka Tool");
 	stage.setOnCloseRequest(e -> Platform.exit());
 
-	var scene = new Scene(root, Settings.ui().getMainWindow().getWidth(),
-		Settings.ui().getMainWindow().getHeight());
+	var scene = new Scene(root, settingsService.ui().getMainWindow().getWidth(),
+		settingsService.ui().getMainWindow().getHeight());
 	stage.setScene(scene);
 	setupUi(stage, scene);
 	ResizeHelper.addResizeListener(stage);
@@ -72,15 +74,17 @@ public class KafkaManagerMainWindow extends Application {
     private void setupUi(Stage stage, Scene scene) {
 	scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 	stage.getIcons().add(new Image(KafkaManagerMainWindow.class.getResourceAsStream("/kafka.png")));
-	stage.widthProperty().addListener((obs, oldValue, newValue) -> Settings
-		.updateUi(ui -> ui.getMainWindow().setWidth((int) stage.getScene().widthProperty().get())));
-	stage.heightProperty().addListener((obs, oldValue, newValue) -> Settings
-		.updateUi(ui -> ui.getMainWindow().setHeight((int) stage.getScene().heightProperty().get())));
+	stage.widthProperty().addListener((obs, oldValue, newValue) -> applicationController
+		.onMainWindowResize((int) stage.getScene().widthProperty().get(),
+			(int) stage.getScene().heightProperty().get()));
+	stage.heightProperty().addListener((obs, oldValue, newValue) -> applicationController
+		.onMainWindowResize((int) stage.getScene().widthProperty().get(),
+			(int) stage.getScene().heightProperty().get()));
     }
 
     @Override
     public void stop() throws Exception {
-	adminService.close();
+	applicationController.shutdown();
 	Platform.exit();
 	System.exit(0);
     }

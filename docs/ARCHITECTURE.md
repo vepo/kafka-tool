@@ -4,17 +4,18 @@ Last updated: 2026-06-25
 
 ## Overview
 
-Kafka Tool is a single-process JavaFX desktop application. One `KafkaAdminService` instance manages the broker connection for the app lifetime. Users connect to a saved broker profile, browse topics, subscribe with format-specific consumers, and perform admin actions (empty topic).
+Kafka Tool is a single-process JavaFX desktop application using an **MVC-style** layout: views (panes, stages, controls) bind to controllers; controllers orchestrate services in `inspect/`, `consumers/`, and `settings/`. One `KafkaAdminService` instance manages the broker connection for the app lifetime.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    KafkaManagerMainWindow                    │
-│  ClusterConnectPane ──connect──► KafkaAdminService           │
-│  MainWindowPane ──► TopicsPane ──► TopicSubscribeStage       │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│ KafkaManagerMainWindow → ApplicationController                          │
+│   ClusterConnectPane → ClusterConnectController                         │
+│   TopicsPane → TopicsController → TopicSubscribeStage → SubscribeController │
+│   BrokerConfigurationStage → BrokerConfigController                     │
+└─────────────────────────────────────────────────────────────────────────┘
          │                              │
          ▼                              ▼
-   Settings (~/.kafka-tool/)     Kafka Cluster + Schema Registry
+   SettingsService → ~/.kafka-tool/     Kafka Cluster + Schema Registry
 ```
 
 ## Technology stack
@@ -36,9 +37,28 @@ Kafka Tool is a single-process JavaFX desktop application. One `KafkaAdminServic
 
 | Class | Responsibility |
 |-------|----------------|
-| `KafkaManagerMainWindow` | Application entry; owns `KafkaAdminService`; switches from connect screen to main tabs |
-| `ClusterConnectPane` | Broker selection, opens `BrokerConfigurationStage`, triggers connect |
-| `TopicsPane` | Topic list with Empty / Subscribe actions; watches connection status |
+| `KafkaManagerMainWindow` | Application entry; creates `ApplicationController`; scene chrome |
+| `ClusterConnectPane` | View: broker combo, configure/connect buttons |
+| `TopicsPane` | View: topic list with Empty / Subscribe actions |
+
+### `controllers/` — MVC orchestration
+
+| Class | Responsibility |
+|-------|----------------|
+| `ApplicationController` | Owns `KafkaAdminService` and `SettingsService`; wires child controllers; connect/shutdown |
+| `ClusterConnectController` | Broker list for connect screen; opens broker config |
+| `TopicsController` | Topic list state; empty topic; open subscribe stage |
+| `SubscribeController` | Consumer lifecycle, message rows, serializer persistence |
+| `BrokerConfigController` | Broker CRUD via `SettingsService` |
+
+Controllers may use `javafx.collections` and `Platform.runLater` for FX-thread marshalling. They must not mutate JavaFX nodes directly.
+
+### `viewmodels/` — Presentation models
+
+| Class | Responsibility |
+|-------|----------------|
+| `MessageRow` | Display key/value + offset for subscribe table |
+| `ConsumerState` | IDLE, RUNNING, STOPPED, ERROR |
 
 ### `inspect/` — Admin API and domain models
 
@@ -46,35 +66,28 @@ Kafka Tool is a single-process JavaFX desktop application. One `KafkaAdminServic
 |-------|----------------|
 | `KafkaAdminService` | Single-thread executor; `AdminClient` lifecycle; list topics, empty topic |
 | `TopicInfo` | Topic name + internal flag |
-| `KafkaMessage` | Table row: raw key bytes + deserialized value string |
+| `KafkaMessage` | Raw key bytes + deserialized value string |
 | `MessageMetadata` | Offset metadata from consumer callback |
-
-**Admin empty-topic flow:** `describeTopics` → `allTopicNames()` → `listOffsets(latest)` → `deleteRecords(beforeOffset)`.
 
 ### `consumers/` — Topic consumption
 
 | Class | Responsibility |
 |-------|----------------|
 | `KafkaAgnosticConsumer` | Factory + shared poll loop for Avro, JSON, Protobuf |
+| `TopicConsumerService` | Serializer mapping, executor, start/stop lifecycle |
+| `KeyFormatter` | Key byte → display string |
+| `ProtobufHelper` | Protobuf message → JSON |
 | `AgnosticConsumerException` | Unchecked wrapper for consumer failures |
-
-Each implementation creates a `KafkaConsumer<byte[], R>` with:
-- Random group id (`random-{uuid}`)
-- `auto.offset.reset=earliest`
-- `ByteArrayDeserializer` for keys
-- Confluent value deserializer + `schema.registry.url` from broker
-
-Blocking poll runs on the caller's executor thread until `stop()` clears the running flag.
 
 ### `settings/` — Persistence
 
 | Class | Responsibility |
 |-------|----------------|
-| `Settings` | Load/save facade; single-thread `saveExecutor` |
+| `Settings` | Internal static load/save; single-thread `saveExecutor` |
+| `SettingsService` | Injectable facade used by controllers (not views) |
 | `KafkaSettings` / `KafkaBroker` | Saved broker profiles |
 | `UiSettings` / `WindowSettings` | Window dimensions |
 | `SerializerSettings` | Per-topic key/value serializer choices |
-| `KeySerializer`, `ValueSerializer` | Enums for UI combos |
 
 Config directory: `~/.kafka-tool/`
 
@@ -84,13 +97,13 @@ Config directory: `~/.kafka-tool/`
 | `ui-properties.json` | Main window + dialog sizes |
 | `serializers.json` | Per-topic serializer preferences |
 
-### `stages/` — Secondary windows
+### `stages/` — Secondary window views
 
 | Class | Responsibility |
 |-------|----------------|
-| `AbstractKafkaToolStage` | Undecorated stage setup, dialog size persistence, custom title bar |
-| `BrokerConfigurationStage` | CRUD for broker profiles |
-| `TopicSubscribeStage` | Start/stop consumer, message table, serializer combos |
+| `AbstractKafkaToolStage` | Undecorated stage setup, dialog size via `SettingsService` |
+| `BrokerConfigurationStage` | Broker table + add form (view only) |
+| `TopicSubscribeStage` | Subscribe UI bound to `SubscribeController` |
 | `MessageViewerStage` | Read-only formatted message view |
 
 ### `controls/` — Reusable UI
@@ -99,61 +112,64 @@ Config directory: `~/.kafka-tool/`
 |------|-----------|
 | Layout | `MainWindowPane`, `CentralizedPane`, `WindowHead`, `TopicConsumerStatusBar` |
 | Builders | `ScreenBuilder`, `ResizePolicy` |
-| Helpers | `WindowHelper`, `ResizeHelper`, `ProtobufHelper` |
+| Helpers | `WindowHelper`, `ResizeHelper` |
+
+## Layer rules
+
+| Layer | May call | Must not |
+|-------|----------|----------|
+| Views (`controls/`, `stages/`, root panes) | `controllers/`, `viewmodels/` | `inspect/`, `consumers/`, `Settings` directly |
+| `controllers/` | `inspect/`, `consumers/`, `SettingsService`, `viewmodels/` | JavaFX node mutation; Kafka clients directly |
+| `inspect/`, `consumers/`, `settings/` | Kafka, Jackson, filesystem | JavaFX |
 
 ## Data flows
 
 ### 1. Application startup
 
 1. `main()` → `Application.launch()`
-2. Create `KafkaAdminService`, `MainWindowPane` (Topics tab), `ClusterConnectPane`
-3. Show connect pane inside `WindowHelper.rootControl()`
-4. Restore window size from `Settings.ui()`
+2. `ApplicationController` creates `KafkaAdminService`, `SettingsService`, child controllers
+3. Show `ClusterConnectPane` inside `WindowHelper.rootControl()`
+4. Restore window size from `SettingsService.ui()`
 
 ### 2. Broker connect
 
 ```
 ClusterConnectPane [Connect]
-  → KafkaAdminService.connect(broker, callback)  [admin executor]
+  → ClusterConnectController.connect(broker)
+  → ApplicationController → KafkaAdminService.connect()  [admin executor]
     → AdminClient.create(bootstrapServers)
-    → status = CONNECTED
-    → callback on executor thread
-      → Platform.runLater: swap to MainWindowPane, update title
-    → notify KafkaConnectionWatcher(s) → TopicsPane.reload()
+    → connection listener → Platform.runLater: swap to MainWindowPane
+    → TopicsController.refreshTopics()
 ```
-
-Connect does not probe broker health; success means `AdminClient` was created.
 
 ### 3. Topic listing
 
 ```
-TopicsPane.reload()
-  → KafkaAdminService.listTopics(callback)  [admin executor]
-    → adminClient.listTopics()
-    → map to List<TopicInfo>
-    → Platform.runLater: update ListView
+TopicsPane [Refresh]
+  → TopicsController.refreshTopics()
+  → KafkaAdminService.listTopics()  [admin executor]
+    → Platform.runLater: update ObservableList<TopicInfo>
 ```
 
 ### 4. Subscribe and consume
 
 ```
 TopicsPane [Subscribe]
-  → new TopicSubscribeStage(topic, owner, connectedBroker)
-  → User selects serializers (persisted via Settings)
-  → [Start] → consumerExecutor.submit(consumer.start(...))
-    → blocking poll loop on consumerExecutor
-    → each record: Platform.runLater → add KafkaMessage to TableView
-  → [Stop] → consumer.stop() (flag only; no consumer.wakeup())
-  → stage close: stop consumer, shutdown executor
+  → TopicsController.openSubscribe()
+  → ApplicationController → SubscribeController + TopicSubscribeStage
+  → User selects serializers (persisted via SettingsService)
+  → [Start] → SubscribeController → TopicConsumerService.start()
+    → blocking poll on consumer executor
+    → each record: Platform.runLater → MessageRow in ObservableList
+  → [Stop] → TopicConsumerService.stop()
+  → stage close: TopicConsumerService.close()
 ```
 
-Key display is decoded in the UI layer (String or big-endian int from 4 bytes), not via Kafka key deserializers.
+Key display uses `KeyFormatter` in the service layer, not Kafka key deserializers.
 
 ### 5. Settings persistence
 
-All writes: read current → apply mutation → Jackson write, serialized on `saveExecutor`.
-
-Reads are synchronous on first access (`loadProperties`).
+Views and controllers write via `SettingsService` → internal `Settings` static methods → `saveExecutor` → JSON files.
 
 ## Threading model
 
@@ -162,9 +178,9 @@ Reads are synchronous on first access (`loadProperties`).
 | JavaFX Application Thread | All UI creation and mutation |
 | `KafkaAdminService` executor (single) | AdminClient operations |
 | `Settings.saveExecutor` (single) | JSON file writes |
-| `TopicSubscribeStage.consumerExecutor` (single) | Blocking consumer poll loop |
+| `TopicConsumerService` executor (single) | Blocking consumer poll loop |
 
-**Rule:** Kafka callbacks and executor tasks must use `Platform.runLater` before touching JavaFX nodes.
+**Rule:** Controllers marshal Kafka/service callbacks with `Platform.runLater` before updating observable state bound by views.
 
 ## External integration
 
@@ -178,7 +194,7 @@ Used for: subscribe + poll in `KafkaAgnosticConsumer` implementations.
 
 ### Confluent Schema Registry
 
-Required for Avro and Protobuf; optional for JSON Schema. URL from `KafkaBroker.schemaRegistryUrl`. When absent, UI limits value serializer to JSON only.
+Required for Avro and Protobuf; optional for JSON Schema. URL from `KafkaBroker.schemaRegistryUrl`. When absent, `TopicConsumerService` limits value serializer to JSON only.
 
 ### Local development stack
 
@@ -213,20 +229,23 @@ Example broker profile: bootstrap `localhost:29092`, registry `http://localhost:
 
 ```mermaid
 classDiagram
-    KafkaManagerMainWindow --> KafkaAdminService
-    KafkaManagerMainWindow --> ClusterConnectPane
-    KafkaManagerMainWindow --> MainWindowPane
-    MainWindowPane --> TopicsPane
-    TopicsPane --> KafkaAdminService
-    TopicsPane --> TopicSubscribeStage
-    ClusterConnectPane --> BrokerConfigurationStage
-    TopicSubscribeStage --> KafkaAgnosticConsumer
-    TopicSubscribeStage --> MessageViewerStage
-    BrokerConfigurationStage --> Settings
-    TopicSubscribeStage --> Settings
+    KafkaManagerMainWindow --> ApplicationController
+    ApplicationController --> KafkaAdminService
+    ApplicationController --> SettingsService
+    ApplicationController --> TopicsController
+    ApplicationController --> ClusterConnectController
+    TopicsPane --> TopicsController
+    ClusterConnectPane --> ClusterConnectController
+    TopicSubscribeStage --> SubscribeController
+    BrokerConfigurationStage --> BrokerConfigController
+    SubscribeController --> TopicConsumerService
+    SubscribeController --> SettingsService
+    TopicsController --> KafkaAdminService
+    BrokerConfigController --> SettingsService
+    TopicConsumerService --> KafkaAgnosticConsumer
     KafkaAgnosticConsumer --> KafkaBroker
     KafkaAdminService --> KafkaBroker
-    AbstractKafkaToolStage --> WindowHelper
+    AbstractKafkaToolStage --> SettingsService
     ScreenBuilder --> WindowHelper
 ```
 

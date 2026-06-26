@@ -6,7 +6,6 @@ import com.google.protobuf.Message;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaJsonDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
-import io.vepo.kafka.tool.controls.helpers.ProtobufHelper;
 import io.vepo.kafka.tool.inspect.KafkaMessage;
 import io.vepo.kafka.tool.inspect.MessageMetadata;
 import io.vepo.kafka.tool.settings.KafkaBroker;

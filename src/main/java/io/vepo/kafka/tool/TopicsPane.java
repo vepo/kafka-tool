@@ -1,16 +1,12 @@
 package io.vepo.kafka.tool;
 
-import static javafx.application.Platform.runLater;
-import static javafx.collections.FXCollections.observableArrayList;
+import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 
 import java.util.Objects;
 
-import io.vepo.kafka.tool.inspect.KafkaAdminService;
+import io.vepo.kafka.tool.controllers.TopicsController;
 import io.vepo.kafka.tool.inspect.TopicInfo;
-import io.vepo.kafka.tool.inspect.KafkaAdminService.BrokerStatus;
-import io.vepo.kafka.tool.stages.TopicSubscribeStage;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
@@ -40,25 +36,20 @@ public class TopicsPane extends VBox {
 
 		var emptyButton = new Button("Empty");
 		emptyButton.setOnAction(event -> {
-
-		    var alert = new Alert(AlertType.CONFIRMATION, "All messages will be lost", ButtonType.OK,
-			    ButtonType.CANCEL);
+		    var alert = new Alert(CONFIRMATION, "All messages will be lost", ButtonType.OK, ButtonType.CANCEL);
 		    alert.setTitle("Do you really want to clear the topic?");
 		    alert.show();
 		    alert.resultProperty().addListener((obs, oldValue, newValue) -> {
 			if (newValue == ButtonType.OK) {
-			    adminService.emptyTopic(topic);
+			    controller.emptyTopic(topic);
 			}
 		    });
 		});
 		HBox.setHgrow(emptyButton, Priority.ALWAYS);
 
 		var subscribeButton = new Button("Subscribe");
-		subscribeButton.setOnAction(event -> {
-		    var consumerStage = new TopicSubscribeStage(topic.getName(), (Stage) getScene().getWindow(),
-			    adminService.connectedBroker());
-		    consumerStage.show();
-		});
+		subscribeButton.setOnAction(event -> controller.openSubscribe(topic.getName(),
+			(Stage) getScene().getWindow()));
 		HBox.setHgrow(subscribeButton, Priority.ALWAYS);
 
 		var buttonsBox = new HBox(10);
@@ -73,41 +64,25 @@ public class TopicsPane extends VBox {
 		setGraphic(null);
 		setOnMouseClicked(null);
 	    }
-
 	}
-
     }
 
-    private KafkaAdminService adminService;
-    private ListView<TopicInfo> listView;
+    private final TopicsController controller;
+    private final ListView<TopicInfo> listView;
 
-    public TopicsPane(KafkaAdminService adminService) {
+    public TopicsPane(TopicsController controller) {
 	super();
-	this.adminService = adminService;
-	this.adminService.watch(state -> {
-	    if (state == BrokerStatus.CONNECTED) {
-		reload();
-	    } else {
-		clear();
-	    }
-	});
+	this.controller = controller;
 
 	listView = new ListView<>();
+	listView.setItems(controller.getTopics());
 	VBox.setVgrow(listView, Priority.ALWAYS);
 	listView.setCellFactory(view -> new KafkaTopicCell());
 
 	var refreshButton = new Button("Refresh");
 	refreshButton.setMaxWidth(Double.MAX_VALUE);
-	refreshButton.setOnAction(e -> reload());
+	refreshButton.setOnAction(e -> controller.refreshTopics());
 	getChildren().addAll(listView, refreshButton);
-    }
-
-    public void reload() {
-	adminService.listTopics(topics -> runLater(() -> listView.setItems(observableArrayList(topics))));
-    }
-
-    public void clear() {
-	runLater(() -> listView.getItems().clear());
     }
 
 }
