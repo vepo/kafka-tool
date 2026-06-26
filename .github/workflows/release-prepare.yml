@@ -3,12 +3,8 @@ name: Prepare release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (semver, without v prefix, e.g. 0.0.3)'
-        required: true
-        type: string
       ref:
-        description: 'Branch or commit to release from'
+        description: 'Branch to release from (must end with -SNAPSHOT in pom.xml)'
         required: false
         default: main
         type: string
@@ -17,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-prepare-${{ inputs.version }}
+  group: release-prepare-${{ inputs.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -40,19 +36,29 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Verify pom.xml version matches release input
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
+      - name: Resolve release and next snapshot versions
+        id: versions
         run: |
           POM_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
-          if [ "$POM_VERSION" != "$RELEASE_VERSION" ]; then
-            echo "pom.xml version ($POM_VERSION) does not match release version ($RELEASE_VERSION)"
+          if [[ "$POM_VERSION" != *-SNAPSHOT ]]; then
+            echo "Expected a -SNAPSHOT version in pom.xml, got: $POM_VERSION"
             exit 1
           fi
+          RELEASE_VERSION="${POM_VERSION%-SNAPSHOT}"
+          IFS='.' read -r major minor patch <<< "$RELEASE_VERSION"
+          if [ -z "$major" ] || [ -z "$minor" ] || [ -z "$patch" ]; then
+            echo "Could not parse semver from release version: $RELEASE_VERSION"
+            exit 1
+          fi
+          NEXT_SNAPSHOT="${major}.$((minor + 1)).0-SNAPSHOT"
+          echo "pom_version=$POM_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "next_snapshot=$NEXT_SNAPSHOT" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Guard against duplicate release tag
         env:
-          RELEASE_TAG: v${{ inputs.version }}
+          RELEASE_TAG: ${{ steps.versions.outputs.release_tag }}
         run: |
           git fetch --tags --force origin
           if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
@@ -66,11 +72,27 @@ jobs:
       - name: Run Kafka bridge integration tests (Testcontainers)
         run: mvn -B verify -Dkafka.integration=true
 
-      - name: Create and push release tag
+      - name: Set release version, tag, and bump to next snapshot
         env:
-          RELEASE_TAG: v${{ inputs.version }}
+          RELEASE_VERSION: ${{ steps.versions.outputs.release_version }}
+          NEXT_SNAPSHOT: ${{ steps.versions.outputs.next_snapshot }}
+          RELEASE_TAG: ${{ steps.versions.outputs.release_tag }}
+          RELEASE_BRANCH: ${{ inputs.ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          mvn -B org.codehaus.mojo:versions-maven-plugin:2.18.0:set \
+            -DnewVersion="$RELEASE_VERSION" -DgenerateBackupPoms=false
+          git add pom.xml
+          git commit -m "Release $RELEASE_VERSION"
+
           git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+
+          mvn -B org.codehaus.mojo:versions-maven-plugin:2.18.0:set \
+            -DnewVersion="$NEXT_SNAPSHOT" -DgenerateBackupPoms=false
+          git add pom.xml
+          git commit -m "Start next development iteration $NEXT_SNAPSHOT"
+
+          git push origin "HEAD:$RELEASE_BRANCH"
           git push origin "$RELEASE_TAG"

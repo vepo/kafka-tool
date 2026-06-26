@@ -117,5 +117,5 @@ Follow `.cursor/rules/project-scripts.mdc` for scripts and automation.
 ## CI
 
 - `.github/workflows/build.yml` — Linux build, tests, SonarCloud on push/PR.
-- `.github/workflows/release-prepare.yml` — manual **Prepare release** (Actions → Run workflow): validates `pom.xml` version, runs tests, pushes `v*` tag.
+- `.github/workflows/release-prepare.yml` — manual **Prepare release** (Actions → Run workflow): runs tests on the current `-SNAPSHOT` in `pom.xml`, commits the release version (without `-SNAPSHOT`), pushes the `v*` tag, then commits the next minor `-SNAPSHOT`.
 - `.github/workflows/build-artifact.yml` — MSI installer on `v*` tags (Windows + jpackage → GitHub Release).
