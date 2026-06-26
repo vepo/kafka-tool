@@ -16,6 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Settings")
 class SettingsTest {
 
+    @Test
+    void loadTest() throws InterruptedException {
+        assertTrue(Settings.kafka().getBrokers().isEmpty());
+        Settings.updateKafka(kafkaSettings -> kafkaSettings.getBrokers()
+                                                           .add(new KafkaBroker("Local", "localhost:9092", "http://localhost:8080")))
+                .thenAccept(kafka -> assertFalse(kafka.getBrokers().isEmpty()));
+    }
+
     @BeforeEach
     void setup() throws IOException {
         if (Settings.KAFKA_TOOL_CONFIG_PATH.toFile().exists()) {
@@ -24,13 +32,5 @@ class SettingsTest {
                  .map(Path::toFile)
                  .forEach(File::delete);
         }
-    }
-
-    @Test
-    void loadTest() throws InterruptedException {
-        assertTrue(Settings.kafka().getBrokers().isEmpty());
-        Settings.updateKafka(kafkaSettings -> kafkaSettings.getBrokers()
-                                                           .add(new KafkaBroker("Local", "localhost:9092", "http://localhost:8080")))
-                .thenAccept(kafka -> assertFalse(kafka.getBrokers().isEmpty()));
     }
 }

@@ -13,27 +13,6 @@ public class SerializerSettings implements Settings<SerializerSettings>, Cloneab
         usedKeySerializer = new HashMap<>();
     }
 
-    public Map<String, ValueSerializer> getUsedValueSerializer() {
-        return usedValueSerializer;
-    }
-
-    public void setUsedValueSerializer(Map<String, ValueSerializer> usedValueSerializer) {
-        this.usedValueSerializer = usedValueSerializer;
-    }
-
-    public Map<String, KeySerializer> getUsedKeySerializer() {
-        return usedKeySerializer;
-    }
-
-    public void setUsedKeySerializer(Map<String, KeySerializer> usedKeySerializer) {
-        this.usedKeySerializer = usedKeySerializer;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(usedKeySerializer, usedValueSerializer);
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -48,6 +27,27 @@ public class SerializerSettings implements Settings<SerializerSettings>, Cloneab
         SerializerSettings other = (SerializerSettings) obj;
         return Objects.equals(usedKeySerializer, other.usedKeySerializer) &&
                 Objects.equals(usedValueSerializer, other.usedValueSerializer);
+    }
+
+    public Map<String, KeySerializer> getUsedKeySerializer() {
+        return usedKeySerializer;
+    }
+
+    public Map<String, ValueSerializer> getUsedValueSerializer() {
+        return usedValueSerializer;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(usedKeySerializer, usedValueSerializer);
+    }
+
+    public void setUsedKeySerializer(Map<String, KeySerializer> usedKeySerializer) {
+        this.usedKeySerializer = usedKeySerializer;
+    }
+
+    public void setUsedValueSerializer(Map<String, ValueSerializer> usedValueSerializer) {
+        this.usedValueSerializer = usedValueSerializer;
     }
 
     @Override

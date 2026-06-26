@@ -5,8 +5,14 @@ import java.util.function.BiConsumer;
 
 public interface ResizePolicy {
 
-    static ResizePolicy fixedSize(int size) {
-        return new FixedSizeResizePolicy(size);
+    class DistributeResizePolicy implements ResizePolicy {
+
+        private final int weight;
+
+        public DistributeResizePolicy(int weight) {
+            this.weight = weight;
+        }
+
     }
 
     class FixedSizeResizePolicy implements ResizePolicy {
@@ -18,29 +24,15 @@ public interface ResizePolicy {
             this.size = size;
             this.penalty = 0;
         }
-        
-        protected void setPenalty(int penalty) {
-            this.penalty = penalty;
-        }
-        
+
         public int getPenalty() {
             return penalty;
         }
 
-    }
-
-    class DistributeResizePolicy implements ResizePolicy {
-
-        private final int weight;
-
-        public DistributeResizePolicy(int weight) {
-            this.weight = weight;
+        protected void setPenalty(int penalty) {
+            this.penalty = penalty;
         }
 
-    }
-
-    static ResizePolicy grow(int weight) {
-        return new DistributeResizePolicy(weight);
     }
 
     static void apply(List<ResizePolicy> resizePolicies, double totalWidth, BiConsumer<Integer, Double> fn) {
@@ -63,6 +55,14 @@ public interface ResizePolicy {
                                       (((DistributeResizePolicy) policy).weight * distributable) / distibutionFactor));
             }
         }
+    }
+
+    static ResizePolicy fixedSize(int size) {
+        return new FixedSizeResizePolicy(size);
+    }
+
+    static ResizePolicy grow(int weight) {
+        return new DistributeResizePolicy(weight);
     }
 
 }

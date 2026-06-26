@@ -10,7 +10,8 @@ Kafka Tool is a single-process JavaFX desktop application using an **MVC-style**
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ KafkaManagerMainWindow → ApplicationController                          │
 │   ClusterConnectPane → ClusterConnectController                         │
-│   TopicsPane → TopicsController → TopicSubscribeStage → SubscribeController │
+│   TopicsPane → TopicsController → TopicSubscribeStage / RecordBrowseStage │
+│   ConsumerGroupsPane → ConsumerGroupsController                           │
 │   BrokerConfigurationStage → BrokerConfigController                     │
 └─────────────────────────────────────────────────────────────────────────┘
          │                              │
@@ -38,8 +39,9 @@ Kafka Tool is a single-process JavaFX desktop application using an **MVC-style**
 | Class | Responsibility |
 |-------|----------------|
 | `KafkaManagerMainWindow` | Application entry; creates `ApplicationController`; scene chrome |
-| `ClusterConnectPane` | View: broker combo, configure/connect buttons |
-| `TopicsPane` | View: topic list with Empty / Subscribe actions |
+| `ClusterConnectPane` | View: broker combo, test/configure/connect |
+| `TopicsPane` | View: topic list with Empty / Browse / Subscribe |
+| `ConsumerGroupsPane` | View: consumer groups, members, lag table |
 
 ### `controllers/` — MVC orchestration
 
@@ -47,9 +49,11 @@ Kafka Tool is a single-process JavaFX desktop application using an **MVC-style**
 |-------|----------------|
 | `ApplicationController` | Owns `KafkaAdminService` and `SettingsService`; wires child controllers; connect/shutdown |
 | `ClusterConnectController` | Broker list for connect screen; opens broker config |
-| `TopicsController` | Topic list state; empty topic; open subscribe stage |
-| `SubscribeController` | Consumer lifecycle, message rows, serializer persistence |
-| `BrokerConfigController` | Broker CRUD via `SettingsService` |
+| `TopicsController` | Topic list; empty topic; open subscribe/browse stages; disconnect |
+| `SubscribeController` | Live consumer lifecycle, message rows, serializer persistence |
+| `RecordBrowseController` | Partition/offset fetch, browse message rows |
+| `ConsumerGroupsController` | Group list, members, lag rows, auto-refresh |
+| `BrokerConfigController` | Broker CRUD and connection test via `SettingsService` |
 
 Controllers may use `javafx.collections` and `Platform.runLater` for FX-thread marshalling. They must not mutate JavaFX nodes directly.
 
@@ -57,24 +61,29 @@ Controllers may use `javafx.collections` and `Platform.runLater` for FX-thread m
 
 | Class | Responsibility |
 |-------|----------------|
-| `MessageRow` | Display key/value + offset for subscribe table |
+| `MessageRow` | Partition, offset, timestamp, display key/value for tables |
 | `ConsumerState` | IDLE, RUNNING, STOPPED, ERROR |
 
 ### `inspect/` — Admin API and domain models
 
 | Class | Responsibility |
 |-------|----------------|
-| `KafkaAdminService` | Single-thread executor; `AdminClient` lifecycle; list topics, empty topic |
+| `KafkaAdminService` | AdminClient lifecycle; topics, empty topic, consumer groups, connection test |
+| `ConsumerGroupService` | List groups, describe members, compute lag |
+| `RecordBrowseService` | Topic partition offsets; delegates fetch to `RecordFetcher` |
 | `TopicInfo` | Topic name + internal flag |
 | `KafkaMessage` | Raw key bytes + deserialized value string |
-| `MessageMetadata` | Offset metadata from consumer callback |
+| `MessageMetadata` | Partition, offset, timestamp from consumer callback |
+| `ConsumerGroupSummary`, `PartitionLagRow`, … | Consumer group inspection DTOs |
+| `ConnectionResult` | Connect/test connection outcome |
 
 ### `consumers/` — Topic consumption
 
 | Class | Responsibility |
 |-------|----------------|
-| `KafkaAgnosticConsumer` | Factory + shared poll loop for Avro, JSON, Protobuf |
+| `KafkaAgnosticConsumer` | Factory + poll loop for Avro, JSON, Protobuf, Plain Text |
 | `TopicConsumerService` | Serializer mapping, executor, start/stop lifecycle |
+| `RecordFetcher` | Assign+seek one-shot record fetch for browse |
 | `KeyFormatter` | Key byte → display string |
 | `ProtobufHelper` | Protobuf message → JSON |
 | `AgnosticConsumerException` | Unchecked wrapper for consumer failures |
@@ -103,16 +112,19 @@ Config directory: `~/.kafka-tool/`
 |-------|----------------|
 | `AbstractKafkaToolStage` | Undecorated stage setup, dialog size via `SettingsService` |
 | `BrokerConfigurationStage` | Broker table + add form (view only) |
-| `TopicSubscribeStage` | Subscribe UI bound to `SubscribeController` |
+| `TopicSubscribeStage` | Live subscribe UI bound to `SubscribeController` |
+| `RecordBrowseStage` | Partition/offset browse UI bound to `RecordBrowseController` |
 | `MessageViewerStage` | Read-only formatted message view |
 
 ### `controls/` — Reusable UI
 
 | Area | Key types |
 |------|-----------|
-| Layout | `MainWindowPane`, `CentralizedPane`, `WindowHead`, `TopicConsumerStatusBar` |
+| Layout | `MainWindowPane`, `CentralizedPane`, `EmptyStatePane`, `ProgressStatusBar`, `WindowHead`, `TopicConsumerStatusBar` |
 | Builders | `ScreenBuilder`, `ResizePolicy` |
-| Helpers | `WindowHelper`, `ResizeHelper` |
+| Helpers | `WindowHelper`, `ResizeHelper`, `UserMessage` |
+
+UI catalog: **`docs/UI_COMPONENTS.md`** (keep in sync when adding controls).
 
 ## Layer rules
 
@@ -151,7 +163,7 @@ TopicsPane [Refresh]
     → Platform.runLater: update ObservableList<TopicInfo>
 ```
 
-### 4. Subscribe and consume
+### 4. Subscribe and consume (live)
 
 ```
 TopicsPane [Subscribe]
@@ -167,7 +179,25 @@ TopicsPane [Subscribe]
 
 Key display uses `KeyFormatter` in the service layer, not Kafka key deserializers.
 
-### 5. Settings persistence
+### 5. Browse records by partition/offset
+
+```
+TopicsPane [Browse]
+  → RecordBrowseController + RecordBrowseStage
+  → RecordBrowseService.describeTopicPartitions()
+  → [Fetch] → RecordFetcher.assign + seek + poll → MessageRow table
+```
+
+### 6. Consumer group lag
+
+```
+ConsumerGroupsPane
+  → ConsumerGroupsController.refreshGroups()
+  → KafkaAdminService.listConsumerGroups / computeConsumerGroupLag
+  → members table + PartitionLagRow lag table (optional 5s auto-refresh)
+```
+
+### 7. Settings persistence
 
 Views and controllers write via `SettingsService` → internal `Settings` static methods → `saveExecutor` → JSON files.
 

@@ -14,25 +14,13 @@ public class UiSettings implements Settings<UiSettings>, Cloneable {
         dialogs = new HashMap<String, WindowSettings>();
     }
 
-    public WindowSettings getMainWindow() {
-        return mainWindow;
-    }
-
-    public void setMainWindow(WindowSettings mainWindow) {
-        this.mainWindow = mainWindow;
-    }
-
-    public Map<String, WindowSettings> getDialogs() {
-        return dialogs;
-    }
-
-    public void setDialogs(Map<String, WindowSettings> dialogs) {
-        this.dialogs = dialogs;
-    }
-
     @Override
-    public int hashCode() {
-        return Objects.hash(dialogs, mainWindow);
+    public UiSettings clone() {
+        try {
+            return (UiSettings) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException("Cannot clone!", e);
+        }
     }
 
     @Override
@@ -50,17 +38,29 @@ public class UiSettings implements Settings<UiSettings>, Cloneable {
         return Objects.equals(dialogs, other.dialogs) && Objects.equals(mainWindow, other.mainWindow);
     }
 
-    @Override
-    public String toString() {
-        return String.format("UiSettings [mainWindow=%s, dialogs=%s]", mainWindow, dialogs);
+    public Map<String, WindowSettings> getDialogs() {
+        return dialogs;
+    }
+
+    public WindowSettings getMainWindow() {
+        return mainWindow;
     }
 
     @Override
-    public UiSettings clone() {
-        try {
-            return (UiSettings) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new RuntimeException("Cannot clone!", e);
-        }
+    public int hashCode() {
+        return Objects.hash(dialogs, mainWindow);
+    }
+
+    public void setDialogs(Map<String, WindowSettings> dialogs) {
+        this.dialogs = dialogs;
+    }
+
+    public void setMainWindow(WindowSettings mainWindow) {
+        this.mainWindow = mainWindow;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("UiSettings [mainWindow=%s, dialogs=%s]", mainWindow, dialogs);
     }
 }

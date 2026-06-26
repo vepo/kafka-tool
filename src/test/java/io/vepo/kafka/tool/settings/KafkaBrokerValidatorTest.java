@@ -17,10 +17,32 @@ class KafkaBrokerValidatorTest {
     private static final String FEATURE = "Kafka broker validation";
 
     @Test
+    void acceptsBlankSchemaRegistryUrl() throws Throwable {
+        try (var env = feature(FEATURE).scenario("Accept a missing schema registry URL").start()) {
+            env.given("no schema registry URL");
+            env.when("validation runs");
+            env.then("blank and null URLs are accepted", () -> {
+                assertTrue(validateSchemaRegistryUrl("").valid());
+                assertTrue(validateSchemaRegistryUrl(null).valid());
+            });
+        }
+    }
+
+    @Test
+    void acceptsMultipleBootstrapServers() throws Throwable {
+        try (var env = feature(FEATURE).scenario("Accept comma-separated bootstrap servers").start()) {
+            env.given("multiple host:port pairs");
+            var result = env.when("the bootstrap servers are validated",
+                                  () -> validateBootstrapServers("localhost:9092,127.0.0.1:9093"));
+            env.then("validation succeeds", () -> assertTrue(result.valid()));
+        }
+    }
+
+    @Test
     void acceptsValidBroker() throws Throwable {
         try (var env = feature(FEATURE).scenario("Accept a valid broker profile").start()) {
             var broker = env.given("a broker with name, bootstrap servers, and schema registry URL",
-                    new KafkaBroker("Local", "localhost:9092", "http://localhost:8081"));
+                                   new KafkaBroker("Local", "localhost:9092", "http://localhost:8081"));
             var result = env.when("the broker is validated", () -> validate(broker, of()));
             env.then("validation succeeds", () -> assertTrue(result.valid()));
         }
@@ -55,28 +77,6 @@ class KafkaBrokerValidatorTest {
                 assertFalse(validateBootstrapServers("localhost").valid());
                 assertFalse(validateBootstrapServers("localhost:9092,").valid());
                 assertFalse(validateBootstrapServers("localhost:70000").valid());
-            });
-        }
-    }
-
-    @Test
-    void acceptsMultipleBootstrapServers() throws Throwable {
-        try (var env = feature(FEATURE).scenario("Accept comma-separated bootstrap servers").start()) {
-            env.given("multiple host:port pairs");
-            var result = env.when("the bootstrap servers are validated",
-                    () -> validateBootstrapServers("localhost:9092,127.0.0.1:9093"));
-            env.then("validation succeeds", () -> assertTrue(result.valid()));
-        }
-    }
-
-    @Test
-    void acceptsBlankSchemaRegistryUrl() throws Throwable {
-        try (var env = feature(FEATURE).scenario("Accept a missing schema registry URL").start()) {
-            env.given("no schema registry URL");
-            env.when("validation runs");
-            env.then("blank and null URLs are accepted", () -> {
-                assertTrue(validateSchemaRegistryUrl("").valid());
-                assertTrue(validateSchemaRegistryUrl(null).valid());
             });
         }
     }

@@ -19,22 +19,22 @@ class SettingsServiceTest {
 
     @BeforeEach
     void setup() throws IOException {
-	if (Settings.KAFKA_TOOL_CONFIG_PATH.toFile().exists()) {
-	    Files.walk(Settings.KAFKA_TOOL_CONFIG_PATH)
-		    .sorted(Comparator.reverseOrder())
-		    .map(Path::toFile)
-		    .forEach(File::delete);
-	}
+        if (Settings.KAFKA_TOOL_CONFIG_PATH.toFile().exists()) {
+            Files.walk(Settings.KAFKA_TOOL_CONFIG_PATH)
+                 .sorted(Comparator.reverseOrder())
+                 .map(Path::toFile)
+                 .forEach(File::delete);
+        }
     }
 
     @Test
     void updateKafkaDelegatesToSettings() throws InterruptedException {
-	var service = new SettingsService();
-	assertTrue(service.kafka().getBrokers().isEmpty());
-	service.updateKafka(kafkaSettings -> kafkaSettings.getBrokers()
-		.add(new KafkaBroker("Local", "localhost:9092", "http://localhost:8080")))
-		.thenAccept(kafka -> assertFalse(kafka.getBrokers().isEmpty()));
-	Thread.sleep(500);
+        var service = new SettingsService();
+        assertTrue(service.kafka().getBrokers().isEmpty());
+        service.updateKafka(kafkaSettings -> kafkaSettings.getBrokers()
+                                                          .add(new KafkaBroker("Local", "localhost:9092", "http://localhost:8080")))
+               .thenAccept(kafka -> assertFalse(kafka.getBrokers().isEmpty()));
+        Thread.sleep(500);
     }
 
 }

@@ -44,114 +44,114 @@ public class SubscribeController {
     private ValueSerializer valueSerializer;
 
     public SubscribeController(SettingsService settingsService, KafkaBroker broker, String topic) {
-	this.settingsService = settingsService;
-	this.broker = broker;
-	this.topic = topic;
-	this.consumerService = new TopicConsumerService();
-	loadSavedSerializers();
-    }
-
-    public SettingsService getSettingsService() {
-	return settingsService;
-    }
-
-    public String getTopic() {
-	return topic;
-    }
-
-    public ObservableList<MessageRow> getMessages() {
-	return messages;
-    }
-
-    public ObjectProperty<ConsumerState> stateProperty() {
-	return state;
-    }
-
-    public LongProperty offsetProperty() {
-	return offset;
-    }
-
-    public List<KeySerializer> getKeySerializers() {
-	return Arrays.asList(KeySerializer.INTEGER, KeySerializer.STRING);
-    }
-
-    public List<ValueSerializer> getValueSerializers() {
-	return consumerService.availableValueSerializers(broker);
-    }
-
-    public KeySerializer getKeySerializer() {
-	return keySerializer;
-    }
-
-    public ValueSerializer getValueSerializer() {
-	return valueSerializer;
-    }
-
-    public void setKeySerializer(KeySerializer keySerializer) {
-	this.keySerializer = keySerializer;
-	settingsService.updateKeySerializer(new Entry<>(topic, keySerializer));
-    }
-
-    public void setValueSerializer(ValueSerializer valueSerializer) {
-	this.valueSerializer = valueSerializer;
-	settingsService.updateValueSerializer(new Entry<>(topic, valueSerializer));
+        this.settingsService = settingsService;
+        this.broker = broker;
+        this.topic = topic;
+        this.consumerService = new TopicConsumerService();
+        loadSavedSerializers();
     }
 
     public boolean canStart() {
-	return valueSerializer != null && keySerializer != null && state.get() != ConsumerState.RUNNING;
-    }
-
-    public boolean isRunning() {
-	return state.get() == ConsumerState.RUNNING || consumerService.isRunning();
+        return valueSerializer != null && keySerializer != null && state.get() != ConsumerState.RUNNING;
     }
 
     public void clearMessages() {
-	runLater(() -> messages.clear());
-    }
-
-    public void startConsumer() {
-	clearMessages();
-	runLater(() -> state.set(ConsumerState.RUNNING));
-	consumerService.start(broker, topic, valueSerializer,
-		(metadata, message) -> runLater(() -> {
-		    offset.set(metadata.offset());
-		    messages.add(MessageRow.from(message, metadata, keySerializer));
-		}),
-		() -> runLater(() -> state.set(ConsumerState.STOPPED)),
-		e -> runLater(() -> {
-		    state.set(ConsumerState.ERROR);
-		    logger.error("Error subscribing to topic!", e);
-		}));
-    }
-
-    public void stopConsumer() {
-	consumerService.stop();
-    }
-
-    public void shutdown() {
-	consumerService.close();
+        runLater(() -> messages.clear());
     }
 
     public Optional<String> formatValueForViewer(MessageRow row) {
-	try {
-	    return Optional.of(mapper.readTree(row.getRawValue()).toPrettyString());
-	} catch (JsonProcessingException e) {
-	    logger.error("Could not format JSON!", e);
-	    return Optional.empty();
-	}
+        try {
+            return Optional.of(mapper.readTree(row.getRawValue()).toPrettyString());
+        } catch (JsonProcessingException e) {
+            logger.error("Could not format JSON!", e);
+            return Optional.empty();
+        }
+    }
+
+    public KeySerializer getKeySerializer() {
+        return keySerializer;
+    }
+
+    public List<KeySerializer> getKeySerializers() {
+        return Arrays.asList(KeySerializer.INTEGER, KeySerializer.STRING);
+    }
+
+    public ObservableList<MessageRow> getMessages() {
+        return messages;
+    }
+
+    public SettingsService getSettingsService() {
+        return settingsService;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public ValueSerializer getValueSerializer() {
+        return valueSerializer;
+    }
+
+    public List<ValueSerializer> getValueSerializers() {
+        return consumerService.availableValueSerializers(broker);
+    }
+
+    public boolean isRunning() {
+        return state.get() == ConsumerState.RUNNING || consumerService.isRunning();
     }
 
     private void loadSavedSerializers() {
-	settingsService.serializers().getUsedKeySerializer()
-		.computeIfPresent(topic, (key, value) -> {
-		    keySerializer = value;
-		    return value;
-		});
-	settingsService.serializers().getUsedValueSerializer()
-		.computeIfPresent(topic, (key, value) -> {
-		    valueSerializer = value;
-		    return value;
-		});
+        settingsService.serializers().getUsedKeySerializer()
+                       .computeIfPresent(topic, (key, value) -> {
+                           keySerializer = value;
+                           return value;
+                       });
+        settingsService.serializers().getUsedValueSerializer()
+                       .computeIfPresent(topic, (key, value) -> {
+                           valueSerializer = value;
+                           return value;
+                       });
+    }
+
+    public LongProperty offsetProperty() {
+        return offset;
+    }
+
+    public void setKeySerializer(KeySerializer keySerializer) {
+        this.keySerializer = keySerializer;
+        settingsService.updateKeySerializer(new Entry<>(topic, keySerializer));
+    }
+
+    public void setValueSerializer(ValueSerializer valueSerializer) {
+        this.valueSerializer = valueSerializer;
+        settingsService.updateValueSerializer(new Entry<>(topic, valueSerializer));
+    }
+
+    public void shutdown() {
+        consumerService.close();
+    }
+
+    public void startConsumer() {
+        clearMessages();
+        runLater(() -> state.set(ConsumerState.RUNNING));
+        consumerService.start(broker, topic, valueSerializer,
+                              (metadata, message) -> runLater(() -> {
+                                  offset.set(metadata.offset());
+                                  messages.add(MessageRow.from(message, metadata, keySerializer));
+                              }),
+                              () -> runLater(() -> state.set(ConsumerState.STOPPED)),
+                              e -> runLater(() -> {
+                                  state.set(ConsumerState.ERROR);
+                                  logger.error("Error subscribing to topic!", e);
+                              }));
+    }
+
+    public ObjectProperty<ConsumerState> stateProperty() {
+        return state;
+    }
+
+    public void stopConsumer() {
+        consumerService.stop();
     }
 
 }

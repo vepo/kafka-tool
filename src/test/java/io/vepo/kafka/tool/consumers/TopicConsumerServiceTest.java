@@ -12,35 +12,43 @@ import io.vepo.kafka.tool.settings.ValueSerializer;
 class TopicConsumerServiceTest {
 
     @Test
-    void availableValueSerializersWithSchemaRegistry() {
-	var service = new TopicConsumerService();
-	var broker = new KafkaBroker("local", "localhost:9092", "http://localhost:8081");
-	var serializers = service.availableValueSerializers(broker);
-	assertEquals(3, serializers.size());
-	assertTrue(serializers.contains(ValueSerializer.AVRO));
-	assertTrue(serializers.contains(ValueSerializer.JSON));
-	assertTrue(serializers.contains(ValueSerializer.PROTOBUF));
+    void availableValueSerializersWithoutSchemaRegistry() {
+        var service = new TopicConsumerService();
+        var broker = new KafkaBroker("local", "localhost:9092", "");
+        var serializers = service.availableValueSerializers(broker);
+        assertEquals(2, serializers.size());
+        assertTrue(serializers.contains(ValueSerializer.JSON));
+        assertTrue(serializers.contains(ValueSerializer.PLAIN_TEXT));
     }
 
     @Test
-    void availableValueSerializersWithoutSchemaRegistry() {
-	var service = new TopicConsumerService();
-	var broker = new KafkaBroker("local", "localhost:9092", "");
-	var serializers = service.availableValueSerializers(broker);
-	assertEquals(1, serializers.size());
-	assertEquals(ValueSerializer.JSON, serializers.get(0));
+    void availableValueSerializersWithSchemaRegistry() {
+        var service = new TopicConsumerService();
+        var broker = new KafkaBroker("local", "localhost:9092", "http://localhost:8081");
+        var serializers = service.availableValueSerializers(broker);
+        assertEquals(4, serializers.size());
+        assertTrue(serializers.contains(ValueSerializer.AVRO));
+        assertTrue(serializers.contains(ValueSerializer.JSON));
+        assertTrue(serializers.contains(ValueSerializer.PROTOBUF));
+        assertTrue(serializers.contains(ValueSerializer.PLAIN_TEXT));
     }
 
     @Test
     void consumerForAvro() {
-	var service = new TopicConsumerService();
-	assertTrue(service.consumerFor(ValueSerializer.AVRO) instanceof KafkaAgnosticConsumer);
+        var service = new TopicConsumerService();
+        assertTrue(service.consumerFor(ValueSerializer.AVRO) instanceof KafkaAgnosticConsumer);
+    }
+
+    @Test
+    void consumerForPlainText() {
+        var service = new TopicConsumerService();
+        assertTrue(service.consumerFor(ValueSerializer.PLAIN_TEXT) instanceof KafkaAgnosticConsumer);
     }
 
     @Test
     void consumerForUnknownReturnsNull() {
-	var service = new TopicConsumerService();
-	assertNull(service.consumerFor(null));
+        var service = new TopicConsumerService();
+        assertNull(service.consumerFor(null));
     }
 
 }

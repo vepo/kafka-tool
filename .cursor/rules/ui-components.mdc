@@ -1,0 +1,37 @@
+---
+description: Keep UI component catalog in sync when building views
+globs: "**/controls/**,**/stages/**,**/ClusterConnectPane.java,**/TopicsPane.java,**/KafkaManagerMainWindow.java"
+alwaysApply: false
+---
+
+# UI Component Catalog
+
+The canonical UI component reference is **`docs/UI_COMPONENTS.md`**.
+
+## Before building UI
+
+1. Check `docs/UI_COMPONENTS.md` for an existing component or ScreenBuilder pattern.
+2. Prefer `ScreenBuilder` + cataloged widgets over ad-hoc `GridPane` in stages.
+3. Use `UserMessage` for user-visible errors and confirmations instead of raw `Alert` in views.
+
+## When you MUST update the catalog
+
+In the **same change** when you:
+
+1. Add, remove, or rename a reusable control in `controls/`
+2. Add a new ScreenBuilder method or table column builder pattern
+3. Introduce a new CSS hook or style class for reusable UI
+4. Use a UI pattern that is not yet documented
+
+## If a pattern is missing
+
+1. Add an entry to `docs/UI_COMPONENTS.md` (catalog id, class, purpose, styles, example).
+2. Implement the reusable component in `controls/` when it will be used more than once.
+3. Do not leave undocumented reusable widgets in stage classes.
+
+## Checklist
+
+- [ ] New UI uses cataloged components or doc was updated?
+- [ ] Empty lists use `EmptyStatePane`?
+- [ ] Loading states use `ProgressStatusBar` or controller loading property?
+- [ ] User errors surfaced via `UserMessage`?

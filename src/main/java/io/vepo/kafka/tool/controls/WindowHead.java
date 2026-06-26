@@ -16,9 +16,18 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 public class WindowHead extends HBox {
+    private static Button chromeButton(StackPane icon, EventHandler<ActionEvent> action) {
+        var button = new Button();
+        button.setGraphic(icon);
+        button.getStyleClass().add("window-chrome-button");
+        button.setOnAction(action);
+        return button;
+    }
+
     private Button btnClose;
     private Button btnMaximize;
     private Button btnMinimize;
+
     private Text title;
 
     public WindowHead() {
@@ -44,16 +53,9 @@ public class WindowHead extends HBox {
         getChildren().addAll(titleBox, btnMinimize, btnMaximize, btnClose);
     }
 
-    public void setTitle(String title) {
-        this.title.setText(title);
-    }
-
-    private static Button chromeButton(StackPane icon, EventHandler<ActionEvent> action) {
-        var button = new Button();
-        button.setGraphic(icon);
-        button.getStyleClass().add("window-chrome-button");
-        button.setOnAction(action);
-        return button;
+    private void close(ActionEvent e) {
+        Stage window = (Stage) getScene().getWindow();
+        window.fireEvent(new WindowEvent(window, WindowEvent.WINDOW_CLOSE_REQUEST));
     }
 
     private void maximize(ActionEvent e) {
@@ -71,9 +73,8 @@ public class WindowHead extends HBox {
         ((Stage) getScene().getWindow()).setIconified(true);
     }
 
-    private void close(ActionEvent e) {
-        Stage window = (Stage) getScene().getWindow();
-        window.fireEvent(new WindowEvent(window, WindowEvent.WINDOW_CLOSE_REQUEST));
+    public void setTitle(String title) {
+        this.title.setText(title);
     }
 
 }

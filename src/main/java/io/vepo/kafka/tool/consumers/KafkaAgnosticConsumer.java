@@ -28,7 +28,6 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
 
 public interface KafkaAgnosticConsumer {
 
-
     abstract class AbstractKafkaAgnosticConsumer<R, T extends Deserializer> implements KafkaAgnosticConsumer {
         private final Class<T> deserializerClass;
         private final Function<R, String> mapper;
@@ -59,7 +58,8 @@ public interface KafkaAgnosticConsumer {
                 consumer.subscribe(asList(topic));
                 while (running.get()) {
                     consumer.poll(Duration.ofSeconds(1))
-                            .forEach(record -> callback.accept(new MessageMetadata(record.offset()),
+                            .forEach(record -> callback.accept(
+                                                               new MessageMetadata(record.partition(), record.offset(), record.timestamp()),
                                                                new KafkaMessage(record.key(), mapper.apply(record.value()))));
                 }
             } catch (Exception e) {
@@ -98,6 +98,14 @@ public interface KafkaAgnosticConsumer {
         }
     }
 
+    class PlainTextKafkaAgnosticConsumer extends AbstractKafkaAgnosticConsumer<byte[], ByteArrayDeserializer> {
+
+        public PlainTextKafkaAgnosticConsumer() {
+            super(ByteArrayDeserializer.class,
+                  bytes -> bytes == null ? "" : new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     class ProtobufKafkaAgnosticConsumer extends AbstractKafkaAgnosticConsumer<Message, KafkaProtobufDeserializer> {
 
         public ProtobufKafkaAgnosticConsumer() {
@@ -111,6 +119,10 @@ public interface KafkaAgnosticConsumer {
 
     static KafkaAgnosticConsumer json() {
         return new JsonKafkaAgnosticConsumer();
+    }
+
+    static KafkaAgnosticConsumer plainText() {
+        return new PlainTextKafkaAgnosticConsumer();
     }
 
     static KafkaAgnosticConsumer protobuf() {

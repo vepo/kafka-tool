@@ -1,8 +1,11 @@
 package io.vepo.kafka.tool.controllers;
 
 import java.util.List;
+import java.util.function.Consumer;
 
+import io.vepo.kafka.tool.inspect.ConnectionResult;
 import io.vepo.kafka.tool.settings.KafkaBroker;
+import io.vepo.kafka.tool.settings.KafkaBrokerValidator;
 import io.vepo.kafka.tool.settings.service.SettingsService;
 import javafx.stage.Stage;
 
@@ -12,24 +15,28 @@ public class ClusterConnectController {
     private final ApplicationController applicationController;
 
     public ClusterConnectController(SettingsService settingsService, ApplicationController applicationController) {
-	this.settingsService = settingsService;
-	this.applicationController = applicationController;
+        this.settingsService = settingsService;
+        this.applicationController = applicationController;
+    }
+
+    public void connect(KafkaBroker broker, Consumer<ConnectionResult> callback) {
+        applicationController.connect(broker, callback);
     }
 
     public List<KafkaBroker> getBrokers() {
-	return settingsService.kafka().getBrokers();
-    }
-
-    public void connect(KafkaBroker broker) {
-	applicationController.connect(broker);
-    }
-
-    public void openBrokerConfiguration(Stage owner) {
-	applicationController.openBrokerConfiguration(owner);
+        return settingsService.kafka().getBrokers();
     }
 
     public SettingsService getSettingsService() {
-	return settingsService;
+        return settingsService;
+    }
+
+    public void openBrokerConfiguration(Stage owner) {
+        applicationController.openBrokerConfiguration(owner);
+    }
+
+    public void testConnection(KafkaBroker broker, Consumer<ConnectionResult> callback) {
+        applicationController.testConnection(broker, callback);
     }
 
 }

@@ -13,20 +13,22 @@ public class KafkaMessage {
         this.value = value;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        KafkaMessage that = (KafkaMessage) o;
+        return Objects.equals(key, that.key) && Objects.equals(value, that.value);
+    }
+
     public byte[] getKey() {
         return key;
     }
 
     public String getValue() {
         return value;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        KafkaMessage that = (KafkaMessage) o;
-        return Objects.equals(key, that.key) && Objects.equals(value, that.value);
     }
 
     @Override

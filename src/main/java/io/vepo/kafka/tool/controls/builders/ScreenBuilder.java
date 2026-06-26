@@ -98,6 +98,17 @@ public interface ScreenBuilder {
 
         }
 
+        public <T extends Node> T addCustom(T control) {
+            return addCustom(control, 1);
+        }
+
+        public <T extends Node> T addCustom(T control, int colSpan) {
+            pane.add(control, currentColumn++, currentRow);
+            GridPane.setHgrow(control, Priority.ALWAYS);
+            GridPane.setColumnSpan(control, colSpan);
+            return control;
+        }
+
         public <T> TableViewBuilder<T> addTableView(int colSpan) {
             var table = new TableView<T>();
             pane.add(table, currentColumn++, currentRow);
@@ -116,17 +127,12 @@ public interface ScreenBuilder {
             return txt;
         }
 
-        public Label addValidationLabel(int colSpan) {
-            var label = new Label();
-            label.getStyleClass().add("validation-message");
-            label.setWrapText(true);
-            label.setMaxWidth(Double.MAX_VALUE);
-            label.setManaged(false);
-            label.setVisible(false);
-            pane.add(label, currentColumn, currentRow);
-            GridPane.setColumnSpan(label, colSpan);
-            currentColumn += colSpan;
-            return label;
+        public TextArea addTextArea() {
+            var txt = new TextArea();
+            pane.add(txt, currentColumn++, currentRow);
+            GridPane.setHgrow(txt, Priority.ALWAYS);
+            GridPane.setVgrow(txt, Priority.ALWAYS);
+            return txt;
         }
 
         public TextField addTextField() {
@@ -138,23 +144,17 @@ public interface ScreenBuilder {
             return txt;
         }
 
-        public TextArea addTextArea() {
-            var txt = new TextArea();
-            pane.add(txt, currentColumn++, currentRow);
-            GridPane.setHgrow(txt, Priority.ALWAYS);
-            GridPane.setVgrow(txt, Priority.ALWAYS);
-            return txt;
-        }
-
-        public <T extends Node> T addCustom(T control) {
-            return addCustom(control, 1);
-        }
-
-        public <T extends Node> T addCustom(T control, int colSpan) {
-            pane.add(control, currentColumn++, currentRow);
-            GridPane.setHgrow(control, Priority.ALWAYS);
-            GridPane.setColumnSpan(control, colSpan);
-            return control;
+        public Label addValidationLabel(int colSpan) {
+            var label = new Label();
+            label.getStyleClass().add("validation-message");
+            label.setWrapText(true);
+            label.setMaxWidth(Double.MAX_VALUE);
+            label.setManaged(false);
+            label.setVisible(false);
+            pane.add(label, currentColumn, currentRow);
+            GridPane.setColumnSpan(label, colSpan);
+            currentColumn += colSpan;
+            return label;
         }
 
         @Override
@@ -195,16 +195,16 @@ public interface ScreenBuilder {
         public TableView<T> build() {
             tableView.disabledProperty().addListener((obs, oldValue, newValue) -> ResizePolicy.apply(resizePolicies,
                                                                                                      tableView.widthProperty().get(), (index, width) -> {
-                        tableView.getColumns().get(index).setPrefWidth(width);
-                        tableView.getColumns().get(index).setMinWidth(width);
-                        tableView.getColumns().get(index).setMaxWidth(width);
-                    }));
+                                                                                                         tableView.getColumns().get(index).setPrefWidth(width);
+                                                                                                         tableView.getColumns().get(index).setMinWidth(width);
+                                                                                                         tableView.getColumns().get(index).setMaxWidth(width);
+                                                                                                     }));
             tableView.widthProperty().addListener((obs, oldValue, newValue) -> ResizePolicy.apply(resizePolicies,
                                                                                                   newValue.doubleValue(), (index, width) -> {
-                        tableView.getColumns().get(index).setPrefWidth(width);
-                        tableView.getColumns().get(index).setMinWidth(width);
-                        tableView.getColumns().get(index).setMaxWidth(width);
-                    }));
+                                                                                                      tableView.getColumns().get(index).setPrefWidth(width);
+                                                                                                      tableView.getColumns().get(index).setMinWidth(width);
+                                                                                                      tableView.getColumns().get(index).setMaxWidth(width);
+                                                                                                  }));
             return tableView;
         }
 
@@ -231,7 +231,6 @@ public interface ScreenBuilder {
                     HBox.setHgrow(btn, Priority.ALWAYS);
                     btn.setOnAction(e -> action.accept(getTableRow().itemProperty().get()));
                     box.getChildren().add(btn);
-
                 });
             }
 
@@ -306,16 +305,15 @@ public interface ScreenBuilder {
             return this;
         }
 
-        public TableViewColumnBuilder<R, C> fromProperty(String property) {
-            column.setCellValueFactory(new PropertyValueFactory<R, C>(property));
-            return this;
-        }
-
         public TableViewColumnBuilder<R, C> fromProperty(Function<R, C> fn) {
             column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(fn.apply(cellData.getValue())));
             return this;
         }
 
+        public TableViewColumnBuilder<R, C> fromProperty(String property) {
+            column.setCellValueFactory(new PropertyValueFactory<R, C>(property));
+            return this;
+        }
 
         public TableViewColumnBuilder<R, C> notEditable() {
             this.column.setEditable(false);

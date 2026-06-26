@@ -10,16 +10,6 @@ import org.opentest4j.TestAbortedException;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 
 public final class Feature {
-    private static final String DEFAULT_BOOTSTRAP = "localhost:29092";
-    private static final String DEFAULT_SCHEMA_REGISTRY = "http://localhost:8081";
-
-    private Feature() {
-    }
-
-    public static FeatureBuilder feature(String featureName) {
-        return new FeatureBuilder(featureName);
-    }
-
     public static final class FeatureBuilder {
         private final String featureName;
         private String scenarioName;
@@ -35,6 +25,24 @@ public final class Feature {
         public FeatureBuilder scenario(String scenarioName) {
             this.scenarioName = scenarioName;
             return this;
+        }
+
+        public ScenarioEnvironment start() {
+            if (scenarioName == null || scenarioName.isBlank()) {
+                throw new IllegalStateException("Call scenario(\"...\") before start().");
+            }
+            if (schemaRegistryEnabled && !kafkaBrokerEnabled) {
+                throw new IllegalStateException("Schema Registry requires withKafkaBroker().");
+            }
+
+            KafkaBroker broker = null;
+            if (kafkaBrokerEnabled) {
+                broker = new KafkaBroker("test", bootstrapServers,
+                                         schemaRegistryEnabled ? schemaRegistryUrl : "");
+                KafkaEnvironment.requireReachable(broker);
+            }
+
+            return new ScenarioEnvironment(featureName, scenarioName, broker);
         }
 
         public FeatureBuilder withKafkaBroker() {
@@ -58,24 +66,20 @@ public final class Feature {
             this.schemaRegistryUrl = schemaRegistryUrl;
             return this;
         }
+    }
 
-        public ScenarioEnvironment start() {
-            if (scenarioName == null || scenarioName.isBlank()) {
-                throw new IllegalStateException("Call scenario(\"...\") before start().");
+    static final class KafkaEnvironment {
+        static void requireReachable(KafkaBroker broker) {
+            if (!Boolean.parseBoolean(System.getProperty("kafka.integration", "false"))) {
+                throw new TestAbortedException(
+                                               "Integration scenario skipped. Re-run with -Dkafka.integration=true and "
+                                                       + "./scripts/setup-local-env.sh up");
             }
-            if (schemaRegistryEnabled && !kafkaBrokerEnabled) {
-                throw new IllegalStateException("Schema Registry requires withKafkaBroker().");
-            }
-
-            KafkaBroker broker = null;
-            if (kafkaBrokerEnabled) {
-                broker = new KafkaBroker("test", bootstrapServers,
-                        schemaRegistryEnabled ? schemaRegistryUrl : "");
-                KafkaEnvironment.requireReachable(broker);
-            }
-
-            return new ScenarioEnvironment(featureName, scenarioName, broker);
+            // Connectivity is validated by the scenario; broker profile is ready for
+            // clients.
         }
+
+        private KafkaEnvironment() {}
     }
 
     public static final class ScenarioEnvironment implements AutoCloseable {
@@ -97,9 +101,16 @@ public final class Feature {
             return broker;
         }
 
-        public ScenarioEnvironment given(String description) {
-            steps.add("Given " + description);
-            return this;
+        @Override
+        public void close() {
+            // Reserved for future embedded or leased infrastructure teardown.
+        }
+
+        private String formatFailure() {
+            return String.format("%nFeature: %s%nScenario: %s%n%s",
+                                 featureName,
+                                 scenarioName,
+                                 String.join(System.lineSeparator(), steps));
         }
 
         public <T> T given(Fixture<T> fixture) {
@@ -107,14 +118,9 @@ public final class Feature {
             return fixture.value();
         }
 
-        public <T> T given(String description, T value) {
+        public ScenarioEnvironment given(String description) {
             steps.add("Given " + description);
-            return value;
-        }
-
-        public <T> T given(String description, Supplier<T> setup) {
-            steps.add("Given " + description);
-            return setup.get();
+            return this;
         }
 
         public ScenarioEnvironment given(String description, Runnable setup) {
@@ -123,42 +129,14 @@ public final class Feature {
             return this;
         }
 
-        public ScenarioEnvironment when(String description) {
-            steps.add("When " + description);
-            return this;
+        public <T> T given(String description, Supplier<T> setup) {
+            steps.add("Given " + description);
+            return setup.get();
         }
 
-        public ScenarioEnvironment when(String description, Runnable action) {
-            steps.add("When " + description);
-            runStep(action);
-            return this;
-        }
-
-        public <T> T when(String description, Supplier<T> action) {
-            steps.add("When " + description);
-            return runStep(action);
-        }
-
-        public ScenarioEnvironment then(String description) {
-            steps.add("Then " + description);
-            return this;
-        }
-
-        public ScenarioEnvironment then(String description, Runnable assertion) {
-            steps.add("Then " + description);
-            runAssertion(assertion);
-            return this;
-        }
-
-        public <T> ScenarioEnvironment then(String description, T value, Consumer<T> assertion) {
-            steps.add("Then " + description);
-            runAssertion(() -> assertion.accept(value));
-            return this;
-        }
-
-        @Override
-        public void close() {
-            // Reserved for future embedded or leased infrastructure teardown.
+        public <T> T given(String description, T value) {
+            steps.add("Given " + description);
+            return value;
         }
 
         private void runAssertion(Runnable assertion) {
@@ -185,25 +163,47 @@ public final class Feature {
             }
         }
 
-        private String formatFailure() {
-            return String.format("%nFeature: %s%nScenario: %s%n%s",
-                    featureName,
-                    scenarioName,
-                    String.join(System.lineSeparator(), steps));
+        public ScenarioEnvironment then(String description) {
+            steps.add("Then " + description);
+            return this;
+        }
+
+        public ScenarioEnvironment then(String description, Runnable assertion) {
+            steps.add("Then " + description);
+            runAssertion(assertion);
+            return this;
+        }
+
+        public <T> ScenarioEnvironment then(String description, T value, Consumer<T> assertion) {
+            steps.add("Then " + description);
+            runAssertion(() -> assertion.accept(value));
+            return this;
+        }
+
+        public ScenarioEnvironment when(String description) {
+            steps.add("When " + description);
+            return this;
+        }
+
+        public ScenarioEnvironment when(String description, Runnable action) {
+            steps.add("When " + description);
+            runStep(action);
+            return this;
+        }
+
+        public <T> T when(String description, Supplier<T> action) {
+            steps.add("When " + description);
+            return runStep(action);
         }
     }
 
-    static final class KafkaEnvironment {
-        private KafkaEnvironment() {
-        }
+    private static final String DEFAULT_BOOTSTRAP = "localhost:29092";
 
-        static void requireReachable(KafkaBroker broker) {
-            if (!Boolean.parseBoolean(System.getProperty("kafka.integration", "false"))) {
-                throw new TestAbortedException(
-                        "Integration scenario skipped. Re-run with -Dkafka.integration=true and "
-                                + "./scripts/setup-local-env.sh up");
-            }
-            // Connectivity is validated by the scenario; broker profile is ready for clients.
-        }
+    private static final String DEFAULT_SCHEMA_REGISTRY = "http://localhost:8081";
+
+    public static FeatureBuilder feature(String featureName) {
+        return new FeatureBuilder(featureName);
     }
+
+    private Feature() {}
 }

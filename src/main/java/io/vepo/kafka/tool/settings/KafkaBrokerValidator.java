@@ -8,11 +8,6 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 public final class KafkaBrokerValidator {
-    private static final Pattern BOOTSTRAP_SERVER = Pattern.compile("^[\\w.-]+:\\d{1,5}$");
-
-    private KafkaBrokerValidator() {
-    }
-
     public record ValidationResult(boolean valid, String message) {
         public static ValidationResult ok() {
             return new ValidationResult(true, "");
@@ -22,6 +17,8 @@ public final class KafkaBrokerValidator {
             return new ValidationResult(false, message);
         }
     }
+
+    private static final Pattern BOOTSTRAP_SERVER = Pattern.compile("^[\\w.-]+:\\d{1,5}$");
 
     public static ValidationResult validate(KafkaBroker broker, Collection<KafkaBroker> existingBrokers) {
         if (isNull(broker)) {
@@ -39,27 +36,6 @@ public final class KafkaBrokerValidator {
         }
 
         return validateSchemaRegistryUrl(broker.getSchemaRegistryUrl());
-    }
-
-    public static ValidationResult validateName(String name, KafkaBroker broker,
-            Collection<KafkaBroker> existingBrokers) {
-        if (isNull(name) || name.isBlank()) {
-            return ValidationResult.error("Name is required.");
-        }
-
-        if (nonNull(existingBrokers)) {
-            var normalized = name.trim();
-            var duplicate = existingBrokers.stream()
-                    .filter(existing -> existing != broker)
-                    .map(KafkaBroker::getName)
-                    .filter(existingName -> nonNull(existingName) && !existingName.isBlank())
-                    .anyMatch(existingName -> existingName.trim().equalsIgnoreCase(normalized));
-            if (duplicate) {
-                return ValidationResult.error("A broker with this name already exists.");
-            }
-        }
-
-        return ValidationResult.ok();
     }
 
     public static ValidationResult validateBootstrapServers(String bootstrapServers) {
@@ -89,6 +65,27 @@ public final class KafkaBrokerValidator {
         return ValidationResult.ok();
     }
 
+    public static ValidationResult validateName(String name, KafkaBroker broker,
+                                                Collection<KafkaBroker> existingBrokers) {
+        if (isNull(name) || name.isBlank()) {
+            return ValidationResult.error("Name is required.");
+        }
+
+        if (nonNull(existingBrokers)) {
+            var normalized = name.trim();
+            var duplicate = existingBrokers.stream()
+                                           .filter(existing -> existing != broker)
+                                           .map(KafkaBroker::getName)
+                                           .filter(existingName -> nonNull(existingName) && !existingName.isBlank())
+                                           .anyMatch(existingName -> existingName.trim().equalsIgnoreCase(normalized));
+            if (duplicate) {
+                return ValidationResult.error("A broker with this name already exists.");
+            }
+        }
+
+        return ValidationResult.ok();
+    }
+
     public static ValidationResult validateSchemaRegistryUrl(String schemaRegistryUrl) {
         if (isNull(schemaRegistryUrl) || schemaRegistryUrl.isBlank()) {
             return ValidationResult.ok();
@@ -108,4 +105,6 @@ public final class KafkaBrokerValidator {
 
         return ValidationResult.ok();
     }
+
+    private KafkaBrokerValidator() {}
 }

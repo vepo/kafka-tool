@@ -18,48 +18,61 @@ public class TopicsController {
     private final KafkaAdminService adminService;
     private final SettingsService settingsService;
     private final BiConsumer<String, Stage> subscribeOpener;
+    private final BiConsumer<String, Stage> browseOpener;
+    private final Runnable disconnectAction;
     private final ObservableList<TopicInfo> topics = observableArrayList();
 
     public TopicsController(KafkaAdminService adminService, SettingsService settingsService,
-	    BiConsumer<String, Stage> subscribeOpener) {
-	this.adminService = adminService;
-	this.settingsService = settingsService;
-	this.subscribeOpener = subscribeOpener;
-	adminService.watch(state -> {
-	    if (state == BrokerStatus.CONNECTED) {
-		refreshTopics();
-	    } else {
-		clearTopics();
-	    }
-	});
-    }
-
-    public ObservableList<TopicInfo> getTopics() {
-	return topics;
-    }
-
-    public void refreshTopics() {
-	adminService.listTopics(topicList -> runLater(() -> topics.setAll(topicList)));
+                            BiConsumer<String, Stage> subscribeOpener, BiConsumer<String, Stage> browseOpener,
+                            Runnable disconnectAction) {
+        this.adminService = adminService;
+        this.settingsService = settingsService;
+        this.subscribeOpener = subscribeOpener;
+        this.browseOpener = browseOpener;
+        this.disconnectAction = disconnectAction;
+        adminService.watch(state -> {
+            if (state == BrokerStatus.CONNECTED) {
+                refreshTopics();
+            } else {
+                clearTopics();
+            }
+        });
     }
 
     public void clearTopics() {
-	runLater(() -> topics.clear());
+        runLater(() -> topics.clear());
+    }
+
+    public void disconnect() {
+        disconnectAction.run();
     }
 
     public void emptyTopic(TopicInfo topic) {
-	adminService.emptyTopic(topic);
+        adminService.emptyTopic(topic);
     }
 
     public KafkaBroker getConnectedBroker() {
-	return adminService.connectedBroker();
-    }
-
-    public void openSubscribe(String topic, Stage owner) {
-	subscribeOpener.accept(topic, owner);
+        return adminService.connectedBroker();
     }
 
     public SettingsService getSettingsService() {
-	return settingsService;
+        return settingsService;
+    }
+
+    public ObservableList<TopicInfo> getTopics() {
+        return topics;
+    }
+
+    public void openBrowse(String topic, Stage owner) {
+        browseOpener.accept(topic, owner);
+    }
+
+    public void openSubscribe(String topic, Stage owner) {
+        subscribeOpener.accept(topic, owner);
+    }
+
+    public void refreshTopics() {
+        adminService.listTopics(topicList -> runLater(() -> topics.setAll(topicList)));
     }
 
 }

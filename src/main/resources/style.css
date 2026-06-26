@@ -155,3 +155,20 @@ WindowHead .window-title {
 .screen-grid .table-view .text-field {
 	-fx-background-color: #738196;
 }
+
+.empty-state {
+	-fx-padding: 24;
+}
+
+.empty-state-message {
+	-fx-text-fill: #FFFFFF;
+	-fx-font-size: 14px;
+}
+
+.progress-status-bar {
+	-fx-padding: 4 0 4 0;
+}
+
+.progress-status-bar .progress-bar {
+	-fx-accent: #738196;
+}

@@ -7,40 +7,56 @@ import io.vepo.kafka.tool.settings.KeySerializer;
 
 public final class MessageRow {
 
-    private final String displayKey;
-    private final String displayValue;
-    private final long offset;
-    private final String rawValue;
-
-    public MessageRow(String displayKey, String displayValue, long offset, String rawValue) {
-	this.displayKey = displayKey;
-	this.displayValue = displayValue;
-	this.offset = offset;
-	this.rawValue = rawValue;
+    public static MessageRow from(KafkaMessage message, MessageMetadata metadata, KeySerializer keySerializer) {
+        return new MessageRow(
+                              metadata.partition(),
+                              metadata.offset(),
+                              metadata.timestamp(),
+                              KeyFormatter.format(message.getKey(), keySerializer),
+                              message.getValue(),
+                              message.getValue());
     }
 
-    public static MessageRow from(KafkaMessage message, MessageMetadata metadata, KeySerializer keySerializer) {
-	return new MessageRow(
-		KeyFormatter.format(message.getKey(), keySerializer),
-		message.getValue(),
-		metadata.offset(),
-		message.getValue());
+    private final int partition;
+    private final long offset;
+    private final long timestamp;
+    private final String displayKey;
+    private final String displayValue;
+
+    private final String rawValue;
+
+    public MessageRow(int partition, long offset, long timestamp, String displayKey, String displayValue,
+                      String rawValue) {
+        this.partition = partition;
+        this.offset = offset;
+        this.timestamp = timestamp;
+        this.displayKey = displayKey;
+        this.displayValue = displayValue;
+        this.rawValue = rawValue;
     }
 
     public String getDisplayKey() {
-	return displayKey;
+        return displayKey;
     }
 
     public String getDisplayValue() {
-	return displayValue;
+        return displayValue;
     }
 
     public long getOffset() {
-	return offset;
+        return offset;
+    }
+
+    public int getPartition() {
+        return partition;
     }
 
     public String getRawValue() {
-	return rawValue;
+        return rawValue;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 
 }

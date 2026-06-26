@@ -17,7 +17,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -32,7 +31,9 @@ import org.slf4j.LoggerFactory;
 import io.vepo.kafka.tool.settings.KafkaBroker;
 
 public class KafkaAdminService implements Closeable {
-    private static final Logger logger = LoggerFactory.getLogger(KafkaAdminService.class);
+    public interface AdminTask {
+        void run(AdminClient client) throws Exception;
+    }
 
     public enum BrokerStatus {
         IDLE, CONNECTED
@@ -40,13 +41,32 @@ public class KafkaAdminService implements Closeable {
 
     public interface KafkaConnectionWatcher {
 
-        public void statusChanged(BrokerStatus status);
+        void statusChanged(BrokerStatus status);
     }
 
+    private static final Logger logger = LoggerFactory.getLogger(KafkaAdminService.class);
+
+    private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
+                                   Consumer<Throwable> errorHandler) {
+        operation.whenComplete((result, error) -> {
+            if (nonNull(error)) {
+                errorHandler.accept(error);
+            } else {
+                successHandler.accept(result);
+            }
+        });
+    }
+
+    private static <T> void ignore(T value) {}
+
+    private final ConsumerGroupService consumerGroupService = ConsumerGroupService.create();
     private BrokerStatus status;
     private AdminClient adminClient = null;
+
     private ExecutorService executor = Executors.newSingleThreadExecutor();
+
     private List<KafkaConnectionWatcher> watchers;
+
     private KafkaBroker connectedBroker;
 
     public KafkaAdminService() {
@@ -54,28 +74,94 @@ public class KafkaAdminService implements Closeable {
         this.status = BrokerStatus.IDLE;
     }
 
-    public BrokerStatus getStatus() {
-        return status;
+    @Override
+    public void close() {
+        logger.info("Closing client...");
+        closeAdminClient();
+        connectedBroker = null;
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(2L, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
+        }
     }
 
-    public void connect(KafkaBroker kafkaBroker, Consumer<BrokerStatus> callback) {
+    private void closeAdminClient() {
+        if (nonNull(adminClient)) {
+            adminClient.close();
+            adminClient = null;
+        }
+    }
+
+    public void computeConsumerGroupLag(String groupId, Consumer<List<PartitionLagRow>> callback) {
+        runOnAdminClient(client -> callback.accept(consumerGroupService.computeLag(client, groupId)),
+                         error -> {
+                             logger.error("Could not compute consumer group lag!", error);
+                             callback.accept(emptyList());
+                         });
+    }
+
+    public void connect(KafkaBroker kafkaBroker, Consumer<ConnectionResult> callback) {
         executor.submit(() -> {
-            connectedBroker = kafkaBroker;
-            var properties = new Properties();
-            properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
-            adminClient = AdminClient.create(properties);
-            status = BrokerStatus.CONNECTED;
-            callback.accept(status);
-            watchers.forEach(consumer -> consumer.statusChanged(status));
+            try {
+                closeAdminClient();
+                var properties = new Properties();
+                properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
+                adminClient = AdminClient.create(properties);
+                adminClient.describeCluster().nodes().get(10, TimeUnit.SECONDS);
+                connectedBroker = kafkaBroker;
+                status = BrokerStatus.CONNECTED;
+                callback.accept(ConnectionResult.connected());
+                watchers.forEach(consumer -> consumer.statusChanged(status));
+            } catch (Exception e) {
+                logger.error("Could not connect to broker!", e);
+                closeAdminClient();
+                connectedBroker = null;
+                status = BrokerStatus.IDLE;
+                callback.accept(ConnectionResult.failed(e.getMessage()));
+            }
         });
     }
 
-    public void watch(KafkaConnectionWatcher watcher) {
-        this.watchers.add(watcher);
-    }
-    
     public KafkaBroker connectedBroker() {
-	return connectedBroker.clone();
+        if (connectedBroker == null) {
+            throw new IllegalStateException("Not connected to a broker.");
+        }
+        return connectedBroker.clone();
+    }
+
+    private void deleteRecords(Map<TopicPartition, ListOffsetsResultInfo> listOffsetResults) {
+        handle(adminClient.deleteRecords(listOffsetResults.entrySet()
+                                                          .stream()
+                                                          .collect(toMap(entry -> entry.getKey(),
+                                                                         entry -> beforeOffset(entry.getValue().offset()))))
+                          .all(),
+               KafkaAdminService::ignore,
+               error -> logger.error("Error deleting records!", error));
+    }
+
+    public void describeConsumerGroupMembers(String groupId, Consumer<List<ConsumerGroupMemberInfo>> callback) {
+        runOnAdminClient(client -> callback.accept(consumerGroupService.describeMembers(client, groupId)),
+                         error -> {
+                             logger.error("Could not describe consumer group members!", error);
+                             callback.accept(emptyList());
+                         });
+    }
+
+    public void disconnect(Consumer<BrokerStatus> callback) {
+        executor.submit(() -> {
+            closeAdminClient();
+            connectedBroker = null;
+            status = BrokerStatus.IDLE;
+            if (callback != null) {
+                callback.accept(status);
+            }
+            watchers.forEach(consumer -> consumer.statusChanged(status));
+        });
     }
 
     public void emptyTopic(TopicInfo topic) {
@@ -90,15 +176,16 @@ public class KafkaAdminService implements Closeable {
         });
     }
 
-    private static <T> void handle(KafkaFuture<T> operation, Consumer<T> successHandler,
-            Consumer<Throwable> errorHandler) {
-        operation.whenComplete((result, error) -> {
-            if (nonNull(error)) {
-                errorHandler.accept(error);
-            } else {
-                successHandler.accept(result);
-            }
-        });
+    public BrokerStatus getStatus() {
+        return status;
+    }
+
+    public void listConsumerGroups(Consumer<List<ConsumerGroupSummary>> callback) {
+        runOnAdminClient(client -> callback.accept(consumerGroupService.listGroups(client)),
+                         error -> {
+                             logger.error("Could not list consumer groups!", error);
+                             callback.accept(emptyList());
+                         });
     }
 
     private void listOffsets(Map<String, TopicDescription> descs) {
@@ -106,28 +193,11 @@ public class KafkaAdminService implements Closeable {
                                             .stream()
                                             .flatMap(desc -> desc.partitions()
                                                                  .stream()
-                                                                 .map(partition -> new TopicPartition(desc.name(),
-                                                                                                      partition.partition())))
-                                            .collect(Collectors.toMap((TopicPartition t) -> t,
-                                                                      t -> OffsetSpec.latest())))
+                                                                 .map(partition -> new TopicPartition(desc.name(), partition.partition())))
+                                            .collect(toMap((TopicPartition t) -> t, t -> OffsetSpec.latest())))
                           .all(),
                this::deleteRecords,
                error -> logger.error("Could not list offset!", error));
-    }
-
-    private void deleteRecords(Map<TopicPartition, ListOffsetsResultInfo> listOffsetResults) {
-        handle(adminClient.deleteRecords(listOffsetResults.entrySet()
-                                                          .stream()
-                                                          .collect(toMap(entry -> entry.getKey(),
-                                                                         entry -> beforeOffset(entry.getValue()
-                                                                                                    .offset()))))
-                          .all(),
-               KafkaAdminService::ignore,
-               error -> logger.error("Error deleting records!", error));
-    }
-
-    private static <T> void ignore(T value) {
-
     }
 
     public void listTopics(Consumer<List<TopicInfo>> callback) {
@@ -150,23 +220,38 @@ public class KafkaAdminService implements Closeable {
         });
     }
 
-    @Override
-    public void close() {
-        logger.info("Closing client...");
-        connectedBroker = null;
-        if (nonNull(adminClient)) {
-            adminClient.close();
-            adminClient = null;
-        }
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(2L, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
+    public void runOnAdminClient(AdminTask task, Consumer<Throwable> errorHandler) {
+        executor.submit(() -> {
+            if (isNull(adminClient)) {
+                errorHandler.accept(new IllegalStateException("Not connected to a broker."));
+                return;
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            executor.shutdownNow();
-        }
+            try {
+                task.run(adminClient);
+            } catch (Exception e) {
+                errorHandler.accept(e);
+            }
+        });
+    }
+
+    public void testConnection(KafkaBroker kafkaBroker, Consumer<ConnectionResult> callback) {
+        executor.submit(() -> {
+            try {
+                var properties = new Properties();
+                properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker.getBootStrapServers());
+                try (var client = AdminClient.create(properties)) {
+                    client.describeCluster().nodes().get(10, TimeUnit.SECONDS);
+                    callback.accept(ConnectionResult.testOk());
+                }
+            } catch (Exception e) {
+                logger.error("Broker connection test failed!", e);
+                callback.accept(ConnectionResult.failed(e.getMessage()));
+            }
+        });
+    }
+
+    public void watch(KafkaConnectionWatcher watcher) {
+        this.watchers.add(watcher);
     }
 
 }

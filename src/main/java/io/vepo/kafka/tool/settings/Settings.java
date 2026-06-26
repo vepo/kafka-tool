@@ -22,6 +22,11 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public interface Settings<T extends Settings<?>> {
+    @FunctionalInterface
+    interface IoSupplier<V> {
+        V get() throws IOException;
+    }
+
     static final String KAFKA_SETTINGS_FILE = "kafka-properties.json";
     static final String KAFKA_TOOL_FOLDER = ".kafka-tool";
     static final Path KAFKA_TOOL_CONFIG_PATH = Paths.get(System.getProperty("user.home"), KAFKA_TOOL_FOLDER);
@@ -29,16 +34,8 @@ public interface Settings<T extends Settings<?>> {
     static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
     static final ExecutorService saveExecutor = Executors.newSingleThreadExecutor();
     static final String UI_SETTINGS_FILE = "ui-properties.json";
+
     static final String SERIALIZERS_SETTINGS_FILE = "serializers.json";
-
-    static KafkaSettings kafka() {
-        return loadProperties(KafkaSettings.class, KafkaSettings.KAFKA_SETTINGS_FILE).orElseGet(KafkaSettings::new);
-    }
-
-    @FunctionalInterface
-    interface IoSupplier<V> {
-        V get() throws IOException;
-    }
 
     static <V> Optional<V> handleIoException(IoSupplier<V> fn) {
         try {
@@ -47,6 +44,10 @@ public interface Settings<T extends Settings<?>> {
             logger.error("Error reading file!", e);
             return Optional.empty();
         }
+    }
+
+    static KafkaSettings kafka() {
+        return loadProperties(KafkaSettings.class, KafkaSettings.KAFKA_SETTINGS_FILE).orElseGet(KafkaSettings::new);
     }
 
     static <T> Optional<T> loadProperties(Class<T> clz, String filename) {
@@ -81,12 +82,12 @@ public interface Settings<T extends Settings<?>> {
         }
     }
 
-    public static UiSettings ui() {
-        return loadProperties(UiSettings.class, UI_SETTINGS_FILE).orElseGet(UiSettings::new);
-    }
-
     public static SerializerSettings serializers() {
         return loadProperties(SerializerSettings.class, SERIALIZERS_SETTINGS_FILE).orElseGet(SerializerSettings::new);
+    }
+
+    public static UiSettings ui() {
+        return loadProperties(UiSettings.class, UI_SETTINGS_FILE).orElseGet(UiSettings::new);
     }
 
     public static CompletableFuture<KafkaSettings> updateKafka(Consumer<KafkaSettings> fn) {
@@ -96,6 +97,14 @@ public interface Settings<T extends Settings<?>> {
             save(KAFKA_SETTINGS_FILE, settings);
         });
         return CompletableFuture.supplyAsync(Settings::kafka, saveExecutor);
+    }
+
+    public static void updateKeySerializer(Entry<String, KeySerializer> entry) {
+        saveExecutor.execute(() -> {
+            var settings = serializers();
+            settings.getUsedKeySerializer().put(entry.key(), entry.value());
+            save(SERIALIZERS_SETTINGS_FILE, settings);
+        });
     }
 
     public static void updateUi(Consumer<UiSettings> fn) {
@@ -110,14 +119,6 @@ public interface Settings<T extends Settings<?>> {
         saveExecutor.execute(() -> {
             var settings = serializers();
             settings.getUsedValueSerializer().put(entry.key(), entry.value());
-            save(SERIALIZERS_SETTINGS_FILE, settings);
-        });
-    }
-
-    public static void updateKeySerializer(Entry<String, KeySerializer> entry) {
-        saveExecutor.execute(() -> {
-            var settings = serializers();
-            settings.getUsedKeySerializer().put(entry.key(), entry.value());
             save(SERIALIZERS_SETTINGS_FILE, settings);
         });
     }

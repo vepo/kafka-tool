@@ -27,7 +27,7 @@ mvn verify
 
 ## Architecture
 
-Read **`docs/ARCHITECTURE.md`** before making structural changes. Update that file when your change affects layers, data flows, dependencies, or conventions (see `.cursor/rules/architecture-docs.mdc`).
+Read **`docs/ARCHITECTURE.md`** before making structural changes. UI components: **`docs/UI_COMPONENTS.md`** (see `.cursor/rules/ui-components.mdc`).
 
 ### Package layout
 
@@ -36,12 +36,12 @@ io.vepo.kafka.tool/
 ├── (root)              Entry point + top-level panes (ClusterConnectPane, TopicsPane)
 ├── controllers/        MVC controllers (ApplicationController, TopicsController, …)
 ├── viewmodels/         Presentation models (MessageRow, ConsumerState)
-├── inspect/            Kafka Admin API + domain DTOs (KafkaAdminService, TopicInfo, …)
-├── consumers/          Format-specific Kafka consumers + TopicConsumerService, KeyFormatter
+├── inspect/            Kafka Admin API + domain DTOs
+├── consumers/          Kafka consumers + RecordFetcher, TopicConsumerService
 ├── settings/           JSON persistence to ~/.kafka-tool/
 │   └── service/        SettingsService (injectable facade for controllers)
-├── stages/             Secondary window views (subscribe, broker config, message viewer)
-└── controls/           Reusable UI widgets, builders, helpers
+├── stages/             Secondary window views
+└── controls/           Reusable UI widgets (see docs/UI_COMPONENTS.md)
     ├── base/           AbstractKafkaToolStage
     ├── builders/       ScreenBuilder, ResizePolicy
     └── helpers/        WindowHelper, ResizeHelper

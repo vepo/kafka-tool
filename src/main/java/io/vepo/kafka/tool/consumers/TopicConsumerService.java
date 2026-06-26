@@ -19,55 +19,57 @@ public class TopicConsumerService {
     private KafkaAgnosticConsumer selectedConsumer;
 
     public List<ValueSerializer> availableValueSerializers(KafkaBroker broker) {
-	if (broker.hasSchemaRegistry()) {
-	    return asList(ValueSerializer.AVRO, ValueSerializer.JSON, ValueSerializer.PROTOBUF);
-	}
-	return asList(ValueSerializer.JSON);
-    }
-
-    public KafkaAgnosticConsumer consumerFor(ValueSerializer serializer) {
-	if (ValueSerializer.AVRO.equals(serializer)) {
-	    return KafkaAgnosticConsumer.avro();
-	} else if (ValueSerializer.JSON.equals(serializer)) {
-	    return KafkaAgnosticConsumer.json();
-	} else if (ValueSerializer.PROTOBUF.equals(serializer)) {
-	    return KafkaAgnosticConsumer.protobuf();
-	}
-	return null;
-    }
-
-    public boolean isRunning() {
-	return selectedConsumer != null && selectedConsumer.isRunning();
-    }
-
-    public void start(KafkaBroker broker, String topic, ValueSerializer valueSerializer,
-	    BiConsumer<MessageMetadata, KafkaMessage> onRecord, Runnable onStopped,
-	    java.util.function.Consumer<AgnosticConsumerException> onError) {
-	selectedConsumer = consumerFor(valueSerializer);
-	consumerExecutor.submit(() -> {
-	    try {
-		selectedConsumer.start(broker, topic, onRecord);
-		onStopped.run();
-	    } catch (AgnosticConsumerException e) {
-		onError.accept(e);
-	    }
-	});
-    }
-
-    public void stop() {
-	if (selectedConsumer != null) {
-	    selectedConsumer.stop();
-	}
+        if (broker.hasSchemaRegistry()) {
+            return asList(ValueSerializer.AVRO, ValueSerializer.JSON, ValueSerializer.PROTOBUF, ValueSerializer.PLAIN_TEXT);
+        }
+        return asList(ValueSerializer.JSON, ValueSerializer.PLAIN_TEXT);
     }
 
     public void close() {
-	stop();
-	consumerExecutor.shutdown();
-	try {
-	    consumerExecutor.awaitTermination(2L, TimeUnit.SECONDS);
-	} catch (InterruptedException e) {
-	    Thread.currentThread().interrupt();
-	}
+        stop();
+        consumerExecutor.shutdown();
+        try {
+            consumerExecutor.awaitTermination(2L, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public KafkaAgnosticConsumer consumerFor(ValueSerializer serializer) {
+        if (ValueSerializer.AVRO.equals(serializer)) {
+            return KafkaAgnosticConsumer.avro();
+        } else if (ValueSerializer.JSON.equals(serializer)) {
+            return KafkaAgnosticConsumer.json();
+        } else if (ValueSerializer.PROTOBUF.equals(serializer)) {
+            return KafkaAgnosticConsumer.protobuf();
+        } else if (ValueSerializer.PLAIN_TEXT.equals(serializer)) {
+            return KafkaAgnosticConsumer.plainText();
+        }
+        return null;
+    }
+
+    public boolean isRunning() {
+        return selectedConsumer != null && selectedConsumer.isRunning();
+    }
+
+    public void start(KafkaBroker broker, String topic, ValueSerializer valueSerializer,
+                      BiConsumer<MessageMetadata, KafkaMessage> onRecord, Runnable onStopped,
+                      java.util.function.Consumer<AgnosticConsumerException> onError) {
+        selectedConsumer = consumerFor(valueSerializer);
+        consumerExecutor.submit(() -> {
+            try {
+                selectedConsumer.start(broker, topic, onRecord);
+                onStopped.run();
+            } catch (AgnosticConsumerException e) {
+                onError.accept(e);
+            }
+        });
+    }
+
+    public void stop() {
+        if (selectedConsumer != null) {
+            selectedConsumer.stop();
+        }
     }
 
 }

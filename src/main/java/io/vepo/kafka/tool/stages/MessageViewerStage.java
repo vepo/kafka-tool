@@ -9,14 +9,14 @@ import javafx.stage.Stage;
 public class MessageViewerStage extends AbstractKafkaToolStage {
 
     public MessageViewerStage(String key, String value, Stage owner, SettingsService settingsService) {
-	super("messageViewer", owner, false, new WindowSettings(512, 512), settingsService);
-	setTitle("Key: " + key);
+        super("messageViewer", owner, false, new WindowSettings(512, 512), settingsService);
+        setTitle("Key: " + key);
 
-	var gridBuilder = ScreenBuilder.grid();
-	var viewer = gridBuilder.addTextArea();
-	viewer.setText(value);
-	viewer.setEditable(false);
-	setScene(gridBuilder.build());
+        var gridBuilder = ScreenBuilder.grid();
+        var viewer = gridBuilder.addTextArea();
+        viewer.setText(value);
+        viewer.setEditable(false);
+        setScene(gridBuilder.build());
     }
 
 }
