@@ -299,6 +299,7 @@ public interface ScreenBuilder {
                         btn.getStyleClass().add("table-action-icon-button");
                     } else {
                         btn.setText(action.label());
+                        btn.getStyleClass().add("table-action-text-button");
                     }
                     if (action.tooltip() != null && !action.tooltip().isBlank()) {
                         btn.setTooltip(new Tooltip(action.tooltip()));

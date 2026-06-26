@@ -1,7 +1,6 @@
 package io.vepo.kafka.tool.stages;
 
 import static io.vepo.kafka.tool.controls.builders.ResizePolicy.fixedSize;
-import static javafx.application.Platform.runLater;
 import static javafx.collections.FXCollections.observableList;
 
 import java.util.Objects;
@@ -10,7 +9,6 @@ import io.vepo.kafka.tool.controllers.SubscribeController;
 import io.vepo.kafka.tool.controls.EmptyStatePane;
 import io.vepo.kafka.tool.controls.TopicConsumerStatusBar;
 import io.vepo.kafka.tool.controls.TopicConsumerStatusBar.Status;
-import io.vepo.kafka.tool.controls.helpers.TableActionIcons;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.builders.ResizePolicy;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
@@ -23,6 +21,8 @@ import javafx.beans.binding.Bindings;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
@@ -95,6 +95,52 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
         this.controller = controller;
         setTitle("Topic: " + controller.getTopic());
 
+        messageTable = ScreenBuilder.grid()
+                                    .<MessageRow>addTableView(1)
+                                    .<Integer>withColumn("Partition")
+                                    .fromProperty(MessageRow::getPartition)
+                                    .notEditable()
+                                    .resizePolicy(fixedSize(72))
+                                    .add()
+                                    .<Long>withColumn("Offset")
+                                    .fromProperty(MessageRow::getOffset)
+                                    .notEditable()
+                                    .resizePolicy(fixedSize(96))
+                                    .add()
+                                    .<Long>withColumn("Timestamp")
+                                    .fromProperty(MessageRow::getTimestamp)
+                                    .notEditable()
+                                    .resizePolicy(fixedSize(112))
+                                    .add()
+                                    .withColumn("Key")
+                                    .fromProperty(MessageRow::getDisplayKey)
+                                    .notEditable()
+                                    .resizePolicy(fixedSize(128))
+                                    .add()
+                                    .withColumn("Message")
+                                    .fromProperty("displayValue")
+                                    .notEditable()
+                                    .resizePolicy(ResizePolicy.grow(1))
+                                    .add()
+                                    .withButtons("Actions")
+                                    .button("View", message -> controller.formatValueForViewer(message)
+                                                                         .ifPresent(formatted -> new MessageViewerStage(message.getDisplayKey(),
+                                                                                                                        formatted,
+                                                                                                                        (Stage) getScene().getWindow(),
+                                                                                                                        controller.getSettingsService()).show()))
+                                    .resizePolicy(fixedSize(72))
+                                    .add()
+                                    .build();
+        messageTable.setDisable(true);
+        messageTable.setItems(controller.getMessages());
+        messageTable.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        var emptyState = new EmptyStatePane("No messages yet. Press Start to consume.");
+        var tableStack = new StackPane(messageTable, emptyState);
+        tableStack.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        emptyState.visibleProperty().bind(Bindings.isEmpty(controller.getMessages()));
+        emptyState.managedProperty().bind(emptyState.visibleProperty());
+
         var gridBuilder = ScreenBuilder.grid()
                                        .withViewHeader("Subscribe to topic",
                                                        "Topic \"" + controller.getTopic() + "\". Choose serializers and press Start.");
@@ -126,50 +172,9 @@ public class TopicSubscribeStage extends AbstractKafkaToolStage {
         btnStop = gridBuilder.addButton("Stop");
         btnStop.setOnAction(e -> controller.stopConsumer());
 
-        messageTable = gridBuilder.newLine()
-                                  .<MessageRow>addTableView(3)
-                                  .<Integer>withColumn("Partition")
-                                  .fromProperty(MessageRow::getPartition)
-                                  .notEditable()
-                                  .resizePolicy(fixedSize(72))
-                                  .add()
-                                  .<Long>withColumn("Offset")
-                                  .fromProperty(MessageRow::getOffset)
-                                  .notEditable()
-                                  .resizePolicy(fixedSize(96))
-                                  .add()
-                                  .<Long>withColumn("Timestamp")
-                                  .fromProperty(MessageRow::getTimestamp)
-                                  .notEditable()
-                                  .resizePolicy(fixedSize(112))
-                                  .add()
-                                  .withColumn("Key")
-                                  .fromProperty(MessageRow::getDisplayKey)
-                                  .notEditable()
-                                  .resizePolicy(fixedSize(128))
-                                  .add()
-                                  .withColumn("Message")
-                                  .fromProperty("displayValue")
-                                  .notEditable()
-                                  .resizePolicy(ResizePolicy.grow(1))
-                                  .add()
-                                  .withButtons("")
-                                  .iconButton(TableActionIcons.view(), "View message", message -> controller.formatValueForViewer(message)
-                                                                                                            .ifPresent(formatted -> new MessageViewerStage(message.getDisplayKey(),
-                                                                                                                                                           formatted,
-                                                                                                                                                           (Stage) getScene().getWindow(),
-                                                                                                                                                           controller.getSettingsService()).show()))
-                                  .resizePolicy(fixedSize(40))
-                                  .add()
-                                  .build();
-        messageTable.setDisable(true);
-        messageTable.setItems(controller.getMessages());
-
-        var emptyState = new EmptyStatePane("No messages yet. Press Start to consume.");
-        var tableStack = new StackPane(messageTable, emptyState);
-        emptyState.visibleProperty().bind(Bindings.isEmpty(controller.getMessages()));
-        emptyState.managedProperty().bind(emptyState.visibleProperty());
         gridBuilder.newLine().addCustom(tableStack, 3);
+        GridPane.setHgrow(tableStack, Priority.ALWAYS);
+        GridPane.setVgrow(tableStack, Priority.ALWAYS);
 
         btnMessagesClear = gridBuilder.newLine().addButton("Clear", 3);
         btnMessagesClear.setOnAction(e -> controller.clearMessages());

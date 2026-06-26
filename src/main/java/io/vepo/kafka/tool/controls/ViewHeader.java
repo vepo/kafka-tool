@@ -6,15 +6,17 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
-import javafx.geometry.Insets;
 import javafx.scene.control.Label;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 /**
- * Eclipse-style view header: title, description, and inline status message (no
- * modal dialogs).
+ * Eclipse-style view header: title, description, and a fixed-height status
+ * line.
  */
 public class ViewHeader extends VBox {
+
+    private static final double MESSAGE_LINE_HEIGHT = 36;
 
     private final Label titleLabel;
     private final Label descriptionLabel;
@@ -26,7 +28,6 @@ public class ViewHeader extends VBox {
         super(6);
         getStyleClass().add("view-header");
         setFillWidth(true);
-        setPadding(new Insets(16, 20, 12, 20));
 
         titleLabel = new Label(title);
         titleLabel.getStyleClass().add("view-header-title");
@@ -42,13 +43,13 @@ public class ViewHeader extends VBox {
         messageLabel.getStyleClass().add("view-header-message");
         messageLabel.setWrapText(true);
         messageLabel.setMaxWidth(Double.MAX_VALUE);
+        messageLabel.setMinHeight(MESSAGE_LINE_HEIGHT);
+        messageLabel.setPrefHeight(MESSAGE_LINE_HEIGHT);
+        messageLabel.setMaxHeight(MESSAGE_LINE_HEIGHT);
         messageLabel.textProperty().bind(messageText);
-        messageLabel.managedProperty().bind(messageLabel.visibleProperty());
+        VBox.setVgrow(messageLabel, Priority.NEVER);
 
         messageType.addListener((obs, oldType, newType) -> applyMessageStyle(newType));
-        messageText.addListener((obs, oldText, newText) -> updateMessageVisibility());
-        messageType.addListener((obs, oldType, newType) -> updateMessageVisibility());
-        updateMessageVisibility();
 
         getChildren().addAll(titleLabel, descriptionLabel, messageLabel);
     }
@@ -91,11 +92,6 @@ public class ViewHeader extends VBox {
     public void showWarning(String message) {
         messageType.set(ViewMessageType.WARNING);
         messageText.set(message);
-    }
-
-    private void updateMessageVisibility() {
-        var visible = messageType.get() != ViewMessageType.NONE && !messageText.get().isBlank();
-        messageLabel.setVisible(visible);
     }
 
 }

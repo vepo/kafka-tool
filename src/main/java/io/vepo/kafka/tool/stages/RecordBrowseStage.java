@@ -8,7 +8,6 @@ import java.util.Objects;
 import io.vepo.kafka.tool.controllers.RecordBrowseController;
 import io.vepo.kafka.tool.controls.EmptyStatePane;
 import io.vepo.kafka.tool.controls.ProgressStatusBar;
-import io.vepo.kafka.tool.controls.helpers.TableActionIcons;
 import io.vepo.kafka.tool.controls.base.AbstractKafkaToolStage;
 import io.vepo.kafka.tool.controls.builders.ResizePolicy;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
@@ -173,13 +172,12 @@ public class RecordBrowseStage extends AbstractKafkaToolStage {
                                       .notEditable()
                                       .resizePolicy(ResizePolicy.grow(1))
                                       .add()
-                                      .withButtons("")
-                                      .iconButton(TableActionIcons.view(), "View message", message -> controller.formatValueForViewer(message)
-                                                                                                                .ifPresent(formatted -> new MessageViewerStage(message.getDisplayKey(),
-                                                                                                                                                               formatted,
-                                                                                                                                                               (Stage) getScene().getWindow(),
-                                                                                                                                                               controller.getSettingsService()).show()))
-                                      .resizePolicy(fixedSize(40))
+                                      .withButtons("Actions")
+                                      .button("View", message -> controller.formatValueForViewer(message)
+                                                                           .ifPresent(formatted -> new MessageViewerStage(message.getDisplayKey(), formatted,
+                                                                                                                          (Stage) getScene().getWindow(),
+                                                                                                                          controller.getSettingsService()).show()))
+                                      .resizePolicy(fixedSize(72))
                                       .add()
                                       .build();
         messageTable.setItems(controller.getMessages());

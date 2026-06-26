@@ -9,7 +9,6 @@ import io.vepo.kafka.tool.controls.EmptyStatePane;
 import io.vepo.kafka.tool.controls.ViewActionBar;
 import io.vepo.kafka.tool.controls.ViewHeader;
 import io.vepo.kafka.tool.controls.builders.ScreenBuilder;
-import io.vepo.kafka.tool.controls.helpers.TableActionIcons;
 import io.vepo.kafka.tool.inspect.TopicInfo;
 import javafx.beans.binding.Bindings;
 import javafx.scene.control.Button;
@@ -53,21 +52,19 @@ public class TopicsPane extends VBox {
                                          .notEditable()
                                          .resizePolicy(fixedSize(80))
                                          .add()
-                                         .withButtons("")
-                                         .iconButton(TableActionIcons.delete(), "Empty topic", topic -> {
+                                         .withButtons("Actions")
+                                         .button("Empty", topic -> {
                                              var owner = ownerStage(topicsTableRef[0]);
                                              if (confirm(owner, "Empty topic?",
                                                          "All messages in \"" + topic.getName() + "\" will be permanently deleted.")) {
                                                  controller.emptyTopic(topic);
                                              }
                                          })
-                                         .iconButton(TableActionIcons.view(), "Browse records", topic -> controller.openBrowse(
-                                                                                                                               topic.getName(),
-                                                                                                                               ownerStage(topicsTableRef[0])))
-                                         .iconButton(TableActionIcons.subscribe(), "Subscribe to topic", topic -> controller.openSubscribe(
-                                                                                                                                           topic.getName(),
-                                                                                                                                           ownerStage(topicsTableRef[0])))
-                                         .resizePolicy(fixedSize(112))
+                                         .button("Browse", topic -> controller.openBrowse(
+                                                                                          topic.getName(), ownerStage(topicsTableRef[0])))
+                                         .button("Subscribe", topic -> controller.openSubscribe(
+                                                                                                topic.getName(), ownerStage(topicsTableRef[0])))
+                                         .resizePolicy(fixedSize(228))
                                          .add()
                                          .build();
         var topicsTable = topicsTableRef[0];
