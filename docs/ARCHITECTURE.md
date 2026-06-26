@@ -261,7 +261,8 @@ Example broker profile: bootstrap `localhost:29092,localhost:29093,localhost:290
 | `target/kafka-tool.jar` | Application jar |
 | `target/kafka-tool-full.jar` | Fat jar with dependencies |
 | `target/libs/` | Copied dependencies |
-| MSI (CI tags only) | Windows installer via jpackage |
+| MSI (CI tags only) | Windows installer via jpackage (`-Pjpackage-windows`) |
+| DEB (CI tags only) | Linux installer via jpackage (`-Pjpackage-linux`) |
 
 ## Known gaps and caveats
 

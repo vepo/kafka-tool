@@ -118,4 +118,4 @@ Follow `.cursor/rules/project-scripts.mdc` for scripts and automation.
 
 - `.github/workflows/build.yml` — Linux build, tests, SonarCloud on push/PR.
 - `.github/workflows/release-prepare.yml` — manual **Prepare release** (Actions → Run workflow): runs tests on the current `-SNAPSHOT` in `pom.xml`, commits the release version (without `-SNAPSHOT`), pushes the `v*` tag, bumps to the next patch `-SNAPSHOT`, then triggers **Release** (tag pushes from `GITHUB_TOKEN` do not start other workflows).
-- `.github/workflows/build-artifact.yml` — MSI installer on `v*` tags or when triggered by prepare (Windows + jpackage → GitHub Release).
+- `.github/workflows/build-artifact.yml` — Windows MSI + Linux `.deb` on `v*` tags or when triggered by prepare (jpackage → GitHub Release).

@@ -12,7 +12,7 @@ A Kafka GUI client for browsing clusters, consuming topics, and monitoring consu
 * **Subscribe** — live consume with Avro, JSON, Protobuf, or Plain Text; partition/offset/timestamp columns; message viewer
 * **Browse records** — fetch up to 500 records from a chosen partition and start offset
 * **Consumer groups** — list groups, member assignments, per-partition lag (auto-refresh optional)
-* **Windows installer** — MSI built on GitHub when a `v*` tag is pushed; use **Actions → Prepare release → Run workflow** while `pom.xml` is a `-SNAPSHOT` version (e.g. `0.0.3-SNAPSHOT` → releases `0.0.3`, then bumps to `0.0.4-SNAPSHOT`)
+* **Installers** — Windows MSI and Linux `.deb` built on GitHub when a `v*` tag is pushed; use **Actions → Prepare release → Run workflow** while `pom.xml` is a `-SNAPSHOT` version (e.g. `0.0.3-SNAPSHOT` → releases `0.0.3`, then bumps to `0.0.4-SNAPSHOT`)
 
 UI building blocks are cataloged in [docs/UI_COMPONENTS.md](docs/UI_COMPONENTS.md).
 

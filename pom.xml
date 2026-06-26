@@ -202,7 +202,6 @@
                 <artifactId>jpackage-maven-plugin</artifactId>
                 <version>0.1.2</version>
                 <configuration>
-                    <type>MSI</type>
                     <name>KafkaTool</name>
                     <modulepath>
                         <dependencysets>
@@ -225,10 +224,7 @@
                     <input>target</input>
                     <mainclass>io.vepo.kafka.tool.KafkaManagerMainWindow</mainclass>
                     <mainjar>kafka-tool.jar</mainjar>
-                    <winmenu>true</winmenu>
                     <appversion>${project.version}</appversion>
-                    <icon>resources/kafka.ico</icon>
-                    <winupgradeuuid>F4D592A4-F09D-4F5A-9CE2-B68052CADF68</winupgradeuuid>
                 </configuration>
             </plugin>
             <plugin>
@@ -334,6 +330,39 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration combine.self="override">
                             <excludedGroups combine.self="override"/>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>jpackage-windows</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.akman</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <configuration>
+                            <type>MSI</type>
+                            <winmenu>true</winmenu>
+                            <icon>resources/kafka.ico</icon>
+                            <winupgradeuuid>F4D592A4-F09D-4F5A-9CE2-B68052CADF68</winupgradeuuid>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>jpackage-linux</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.akman</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <configuration>
+                            <type>DEB</type>
+                            <linuxmenu>true</linuxmenu>
+                            <linuxshortcut>true</linuxshortcut>
                         </configuration>
                     </plugin>
                 </plugins>
