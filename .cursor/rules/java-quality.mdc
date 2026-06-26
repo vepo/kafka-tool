@@ -53,9 +53,10 @@ Platform.runLater(() -> messageTable.getItems().add(message));
 
 ## Tests
 
+- Follow `.cursor/rules/tdd-gherkin.mdc`: every feature ships with a Gherkin-style scenario using `Feature.feature(...).scenario(...).start()` in try-with-resources.
 - Add unit tests for new logic in `settings/`, `consumers/`, `inspect/`, `controls/helpers/`.
-- Use JUnit 5 (`@DisplayName`, descriptive test names).
-- Tests must not depend on a running Kafka broker unless explicitly an integration test (none exist today).
+- Use JUnit 5; one `@Test` method = one Scenario.
+- Tests must not depend on a running Kafka broker unless tagged `@Tag("integration")`.
 - Clean up `~/.kafka-tool/` in settings tests (see `SettingsTest`).
 
 ## Dependencies

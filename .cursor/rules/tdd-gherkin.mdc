@@ -1,0 +1,86 @@
+---
+description: TDD workflow — every feature needs a Gherkin-style scenario test
+globs: "**/*.{java,feature}"
+alwaysApply: true
+---
+
+# TDD with Gherkin — Kafka Tool
+
+## Workflow
+
+1. **Write the scenario first** (red) — declare behaviour in Gherkin form before or alongside production code.
+2. **Implement the minimum code** (green) — make the scenario pass.
+3. **Refactor** — keep the scenario unchanged unless requirements change.
+
+Do not merge a feature without its scenario test. Bug fixes get a regression scenario.
+
+## Declaring tests
+
+Use the high-level environment API in `io.vepo.kafka.tool.support.gherkin.Feature`.
+
+### Unit scenario (no infrastructure)
+
+```java
+try (var env = feature("Kafka broker validation")
+        .scenario("Accept a valid broker profile")
+        .start()) {
+    var broker = env.given("a broker with valid configuration", new KafkaBroker(...));
+    var result = env.when("the broker is validated", () -> validate(broker, brokers));
+    env.then("validation succeeds", () -> assertTrue(result.valid()));
+}
+```
+
+### Integration scenario (Kafka + Schema Registry)
+
+Requires `./scripts/setup-local-env.sh up` and `-Dkafka.integration=true`.
+
+```java
+try (var env = feature("Consume records")
+        .scenario("Consume Avro records from a topic")
+        .withKafkaBroker()
+        .withSchemaRegistry()
+        .start()) {
+    var records = env.given(recordsOnTopic("user-avro"));
+    env.when("records are produced to Kafka", () -> produce(env.broker(), records));
+    env.then("the consumer receives the records", () -> assertMessagesReceived(records));
+}
+```
+
+Use `Fixture.fixture("description", value)` helpers so `env.given(records())` stays readable:
+
+```java
+private Fixture<List<ProducerRecord<?, ?>>> recordsOnTopic(String topic) {
+    return fixture("records on topic " + topic, List.of(...));
+}
+```
+
+## API rules
+
+- **`feature(name)`** — names the Feature; returns a builder.
+- **`scenario(name)`** — required before `start()`.
+- **`withKafkaBroker()` / `withSchemaRegistry()`** — opt in to integration infrastructure; call before `start()`.
+- **`start()`** — opens a try-with-resources `ScenarioEnvironment`.
+- **`given` / `when` / `then`** — every step needs a plain-English description; use overloads for fixtures and actions.
+- **`env.broker()`** — returns the test broker profile when `withKafkaBroker()` was used.
+
+Keep act in **`when`**, assert in **`then`**, arrange in **`given`**.
+
+## Where tests live
+
+| Change | Test location | Gherkin DSL |
+|--------|---------------|-------------|
+| `settings/`, `inspect/`, `consumers/`, `controls/helpers/` | `src/test/java/.../*Test.java` | Required |
+| UI-only (`stages/`, root panes) | Extract logic to a testable layer first | Required on extracted logic |
+| Integration (Kafka running) | `*IT.java`, `@Tag("integration")`, `-Dkafka.integration=true` | Required |
+
+Optional spec mirrors: `src/test/resources/features/*.feature` (JUnit scenario is source of truth).
+
+## Scope
+
+- One `@Test` method = one **Scenario** wrapped in `try (var env = ...)`.
+- One test class usually covers one **Feature** name.
+
+## Before finishing
+
+- Run `mvn verify` (unit tests only by default).
+- Run `mvn verify -Dkafka.integration=true` when changing integration scenarios.

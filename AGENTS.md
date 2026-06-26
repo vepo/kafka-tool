@@ -64,8 +64,10 @@ io.vepo.kafka.tool/
 
 - Tests live under `src/test/java/`.
 - Run with `mvn test` or `mvn verify`.
+- Follow **TDD with Gherkin scenarios** (see `.cursor/rules/tdd-gherkin.mdc`): every feature uses `Feature.feature(...).scenario(...).start()` in try-with-resources; integration tests add `.withKafkaBroker()` / `.withSchemaRegistry()` and `-Dkafka.integration=true`.
 - Add tests for new logic in `settings/`, `consumers/`, `inspect/`, and `controls/helpers/` (pure Java, no FX thread needed).
-- UI stages are not integration-tested; keep Kafka logic out of stages when possible.
+- UI stages are not integration-tested; extract logic and scenario-test it.
+- Optional readable specs: `src/test/resources/features/*.feature` (JUnit scenario is source of truth).
 - Protobuf test classes are generated from `src/test/protobuf/` during `generate-test-sources`.
 
 ## Dependencies (managed in pom.xml)
@@ -82,6 +84,7 @@ Bump versions in `pom.xml` properties only; keep Kafka and Confluent versions al
 ## Code quality rules
 
 Follow `.cursor/rules/java-quality.mdc` for all Java changes.
+Follow `.cursor/rules/tdd-gherkin.mdc` for tests and new features (Gherkin scenario first).
 
 ## What not to do
 
