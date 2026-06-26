@@ -28,7 +28,7 @@ Kafka Tool is a single-process JavaFX desktop application. One `KafkaAdminServic
 | Config persistence | Jackson JSON files in `~/.kafka-tool/` |
 | Logging | SLF4J + Logback |
 | Build | Maven |
-| Local dev stack | Docker Compose (`resources/docker/docker-compose.yaml`) |
+| Local dev stack | Docker Compose (`resources/docker/docker-compose.yaml`, `./scripts/setup-local-env.sh`) |
 
 ## Package structure
 
@@ -182,13 +182,12 @@ Required for Avro and Protobuf; optional for JSON Schema. URL from `KafkaBroker.
 
 ### Local development stack
 
-`resources/docker/docker-compose.yaml`:
+`resources/docker/docker-compose.yaml` (started via `./scripts/setup-local-env.sh`):
 
-| Service | Host port |
-|---------|-----------|
-| Zookeeper | 22181 |
-| Kafka | 29092 |
-| Schema Registry | 8081 |
+| Service | Image | Host port |
+|---------|-------|-----------|
+| Kafka | `vepo/kafka:latest` (KRaft) | 29092 |
+| Schema Registry | `confluentinc/cp-schema-registry:8.3.0` | 8081 |
 
 Example broker profile: bootstrap `localhost:29092`, registry `http://localhost:8081`.
 

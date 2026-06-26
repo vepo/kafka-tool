@@ -3,7 +3,7 @@
 	-fx-border-radius: 0;
 }
 
-ClusterConnectPane, WindowHead, MainWindowPane, GridPane {
+ClusterConnectPane, WindowHead, MainWindowPane, GridPane, .screen-grid {
 	-fx-background-color: #8b96a7;
 }
 
@@ -46,5 +46,112 @@ MainWindowPane .button.selected {
 }
 
 .combo-box-base .list-cell:hover {
+	-fx-background-color: #738196;
+}
+
+WindowHead .window-chrome-button {
+	-fx-background-color: transparent;
+	-fx-background-radius: 0;
+	-fx-min-width: 46px;
+	-fx-pref-width: 46px;
+	-fx-max-width: 46px;
+	-fx-min-height: 32px;
+	-fx-pref-height: 32px;
+	-fx-max-height: 32px;
+	-fx-padding: 0;
+	-fx-font-size: 16px;
+	-fx-text-fill: #FFFFFF;
+	-fx-content-display: graphic-only;
+}
+
+WindowHead .window-chrome-button:hover {
+	-fx-background-color: #738196;
+}
+
+WindowHead .window-close-button:hover {
+	-fx-background-color: #e81123;
+}
+
+WindowHead .window-title {
+	-fx-fill: #FFFFFF;
+	-fx-font-size: 13px;
+}
+
+.screen-grid .form-label {
+	-fx-text-fill: #FFFFFF;
+}
+
+.screen-grid .validation-message {
+	-fx-text-fill: #ffb4b4;
+	-fx-font-size: 12px;
+}
+
+.text-field.invalid {
+	-fx-border-color: #e81123;
+	-fx-border-width: 2;
+	-fx-border-radius: 0;
+}
+
+.screen-grid .table-view {
+	-fx-background-color: #596475;
+	-fx-border-color: #444444;
+	-fx-border-width: 1;
+	-fx-background-radius: 0;
+	-fx-border-radius: 0;
+}
+
+.screen-grid .table-view:focused {
+	-fx-background-color: #596475;
+	-fx-background-insets: 0;
+	-fx-background-radius: 0;
+}
+
+.screen-grid .table-view .column-header-background {
+	-fx-background-color: #596475;
+	-fx-background-radius: 0;
+}
+
+.screen-grid .table-view .column-header {
+	-fx-background-color: #596475;
+	-fx-border-color: #444444;
+	-fx-border-width: 0 0 1 0;
+	-fx-size: 32;
+}
+
+.screen-grid .table-view .column-header .label {
+	-fx-text-fill: #FFFFFF;
+}
+
+.screen-grid .table-view .table-cell {
+	-fx-background-color: #596475;
+	-fx-text-fill: #FFFFFF;
+	-fx-border-color: #444444;
+	-fx-border-width: 0 0 1 0;
+	-fx-padding: 6 8 6 8;
+}
+
+.screen-grid .table-view .table-row-cell {
+	-fx-background-color: #596475;
+	-fx-background-insets: 0;
+	-fx-padding: 0;
+}
+
+.screen-grid .table-view .table-row-cell:odd {
+	-fx-background-color: #596475;
+}
+
+.screen-grid .table-view .table-row-cell:selected {
+	-fx-background-color: #738196;
+}
+
+.screen-grid .table-view .table-row-cell:selected .table-cell {
+	-fx-background-color: #738196;
+}
+
+.screen-grid .table-view .placeholder .label {
+	-fx-text-fill: #FFFFFF;
+}
+
+.screen-grid .table-view .text-field {
 	-fx-background-color: #738196;
 }

@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -155,6 +156,16 @@ public class KafkaAdminService implements Closeable {
         connectedBroker = null;
         if (nonNull(adminClient)) {
             adminClient.close();
+            adminClient = null;
+        }
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(2L, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
         }
     }
 

@@ -23,6 +23,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -32,7 +33,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.text.Text;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.util.Callback;
 
 public interface ScreenBuilder {
@@ -43,10 +44,21 @@ public interface ScreenBuilder {
 
         private GridScreenBuilder() {
             pane = new GridPane();
-            pane.setAlignment(Pos.CENTER);
+            pane.getStyleClass().add("screen-grid");
+            pane.setAlignment(Pos.TOP_LEFT);
             pane.setHgap(10);
             pane.setVgap(10);
             pane.setPadding(new Insets(25, 25, 25, 25));
+
+            var labelColumn = new ColumnConstraints();
+            labelColumn.setMinWidth(140);
+            labelColumn.setPrefWidth(140);
+
+            var fieldColumn = new ColumnConstraints();
+            fieldColumn.setHgrow(Priority.ALWAYS);
+            fieldColumn.setFillWidth(true);
+
+            pane.getColumnConstraints().addAll(labelColumn, fieldColumn);
             currentRow = 0;
             currentColumn = 0;
         }
@@ -96,14 +108,31 @@ public interface ScreenBuilder {
             return new TableViewBuilder<T>(table);
         }
 
-        public Text addText(String label) {
-            var txt = new Text(label);
+        public Label addText(String label) {
+            var txt = new Label(label);
+            txt.getStyleClass().add("form-label");
+            txt.setMaxWidth(Double.MAX_VALUE);
             pane.add(txt, currentColumn++, currentRow);
             return txt;
         }
 
+        public Label addValidationLabel(int colSpan) {
+            var label = new Label();
+            label.getStyleClass().add("validation-message");
+            label.setWrapText(true);
+            label.setMaxWidth(Double.MAX_VALUE);
+            label.setManaged(false);
+            label.setVisible(false);
+            pane.add(label, currentColumn, currentRow);
+            GridPane.setColumnSpan(label, colSpan);
+            currentColumn += colSpan;
+            return label;
+        }
+
         public TextField addTextField() {
             var txt = new TextField();
+            txt.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setFillWidth(txt, true);
             pane.add(txt, currentColumn++, currentRow);
             GridPane.setHgrow(txt, Priority.ALWAYS);
             return txt;

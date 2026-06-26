@@ -20,8 +20,8 @@ mvn javafx:run
 # Compile, test, package
 mvn verify
 
-# Local Kafka stack (Zookeeper + Kafka + Schema Registry)
-cd resources/docker && docker compose up
+# Local Kafka stack (KRaft Kafka + Schema Registry)
+./scripts/setup-local-env.sh
 # Bootstrap: localhost:29092  |  Schema Registry: http://localhost:8081
 ```
 

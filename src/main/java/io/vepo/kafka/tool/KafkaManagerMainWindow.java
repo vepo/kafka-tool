@@ -59,6 +59,7 @@ public class KafkaManagerMainWindow extends Application {
 	stage.setMinWidth(560);
 	stage.setMinHeight(360);
 	stage.setTitle("Kafka Tool");
+	stage.setOnCloseRequest(e -> Platform.exit());
 
 	var scene = new Scene(root, Settings.ui().getMainWindow().getWidth(),
 		Settings.ui().getMainWindow().getHeight());

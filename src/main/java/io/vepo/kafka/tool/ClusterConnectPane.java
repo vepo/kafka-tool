@@ -26,6 +26,7 @@ public class ClusterConnectPane extends CentralizedPane {
         setPadding(new Insets(25, 25, 25, 25));
 
         var selectPane = new GridPane();
+        selectPane.getStyleClass().add("screen-grid");
         selectPane.setVgap(10);
         selectPane.setHgap(10);
 
@@ -73,7 +74,7 @@ public class ClusterConnectPane extends CentralizedPane {
 
         var btnConnect = new Button("Connect");
         btnConnect.setMaxWidth(Double.MAX_VALUE);
-        btnConnect.disableProperty().bind(cmbCluster.itemsProperty().isNull());
+        btnConnect.disableProperty().bind(cmbCluster.valueProperty().isNull());
         btnConnect.setOnAction(e -> connectAction.accept(cmbCluster.getValue()));
         GridPane.setFillWidth(btnConnect, true);
         GridPane.setColumnSpan(btnConnect, 2);
