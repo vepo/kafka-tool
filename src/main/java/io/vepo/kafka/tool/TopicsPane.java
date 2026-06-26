@@ -1,113 +1,79 @@
 package io.vepo.kafka.tool;
 
-import static javafx.application.Platform.runLater;
-import static javafx.collections.FXCollections.observableArrayList;
+import static io.vepo.kafka.tool.controls.builders.ResizePolicy.fixedSize;
+import static io.vepo.kafka.tool.controls.builders.ResizePolicy.grow;
+import static io.vepo.kafka.tool.controls.builders.UI.actionBar;
+import static io.vepo.kafka.tool.controls.builders.UI.mainView;
+import static io.vepo.kafka.tool.controls.builders.UI.tableWithEmptyState;
+import static io.vepo.kafka.tool.controls.helpers.UserConfirmation.confirm;
 
-import java.util.Objects;
-
-import io.vepo.kafka.tool.inspect.KafkaAdminService;
+import io.vepo.kafka.tool.controllers.TopicsController;
+import io.vepo.kafka.tool.controls.builders.UI;
 import io.vepo.kafka.tool.inspect.TopicInfo;
-import io.vepo.kafka.tool.inspect.KafkaAdminService.BrokerStatus;
-import io.vepo.kafka.tool.stages.TopicSubscribeStage;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.layout.HBox;
+import javafx.scene.control.TableView;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public class TopicsPane extends VBox {
 
-    private class KafkaTopicCell extends ListCell<TopicInfo> {
-
-	@Override
-	protected void updateItem(TopicInfo topic, boolean empty) {
-	    super.updateItem(topic, empty);
-	    if (Objects.nonNull(topic)) {
-		var box = new HBox();
-
-		var topicNameText = new Label(topic.getName());
-		topicNameText.maxWidth(Double.MAX_VALUE);
-
-		var textBox = new HBox();
-		textBox.getChildren().add(topicNameText);
-		HBox.setHgrow(textBox, Priority.ALWAYS);
-
-		var emptyButton = new Button("Empty");
-		emptyButton.setOnAction(event -> {
-
-		    var alert = new Alert(AlertType.CONFIRMATION, "All messages will be lost", ButtonType.OK,
-			    ButtonType.CANCEL);
-		    alert.setTitle("Do you really want to clear the topic?");
-		    alert.show();
-		    alert.resultProperty().addListener((obs, oldValue, newValue) -> {
-			if (newValue == ButtonType.OK) {
-			    adminService.emptyTopic(topic);
-			}
-		    });
-		});
-		HBox.setHgrow(emptyButton, Priority.ALWAYS);
-
-		var subscribeButton = new Button("Subscribe");
-		subscribeButton.setOnAction(event -> {
-		    var consumerStage = new TopicSubscribeStage(topic.getName(), (Stage) getScene().getWindow(),
-			    adminService.connectedBroker());
-		    consumerStage.show();
-		});
-		HBox.setHgrow(subscribeButton, Priority.ALWAYS);
-
-		var buttonsBox = new HBox(10);
-		buttonsBox.getChildren().addAll(emptyButton, subscribeButton);
-		HBox.setHgrow(subscribeButton, Priority.ALWAYS);
-
-		box.getChildren().addAll(textBox, buttonsBox);
-		setGraphic(box);
-		setText(null);
-	    } else {
-		setText(null);
-		setGraphic(null);
-		setOnMouseClicked(null);
-	    }
-
-	}
-
+    private static Stage ownerStage(javafx.scene.Node node) {
+        return node.getScene() != null ? (Stage) node.getScene().getWindow() : null;
     }
 
-    private KafkaAdminService adminService;
-    private ListView<TopicInfo> listView;
+    public TopicsPane(TopicsController controller) {
+        super();
+        setFillWidth(true);
 
-    public TopicsPane(KafkaAdminService adminService) {
-	super();
-	this.adminService = adminService;
-	this.adminService.watch(state -> {
-	    if (state == BrokerStatus.CONNECTED) {
-		reload();
-	    } else {
-		clear();
-	    }
-	});
+        @SuppressWarnings("unchecked")
+        TableView<TopicInfo>[] tableRef = new TableView[1];
+        tableRef[0] = UI.<TopicInfo>table().withStringColumn("Topic", TopicInfo::getName, grow(1))
+                        .withColumn("Internal", topic -> topic.isInternal() ? "Yes" : "No", fixedSize(80))
+                        .withActions("Actions")
+                        .button("Empty", topic -> {
+                            if (confirm(ownerStage(tableRef[0]), "Empty topic?",
+                                        "All messages in \"" + topic.getName() + "\" will be permanently deleted.")) {
+                                controller.emptyTopic(topic);
+                            }
+                        })
+                        .button("Browse", topic -> controller.openBrowse(topic.getName(), ownerStage(tableRef[0])))
+                        .button("Subscribe",
+                                topic -> controller.openSubscribe(topic.getName(), ownerStage(tableRef[0])))
+                        .width(fixedSize(228))
+                        .add()
+                        .items(controller.getTopics())
+                        .minHeight(120)
+                        .maxWidth(Double.MAX_VALUE)
+                        .build();
 
-	listView = new ListView<>();
-	VBox.setVgrow(listView, Priority.ALWAYS);
-	listView.setCellFactory(view -> new KafkaTopicCell());
+        var topicsTable = tableRef[0];
+        topicsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue != null) {
+                controller.selectTopicRequestProperty().set(null);
+            }
+        });
+        controller.selectTopicRequestProperty().addListener((obs, oldValue, topicName) -> {
+            if (topicName == null || topicName.isBlank()) {
+                return;
+            }
+            controller.getTopics().stream()
+                      .filter(topic -> topicName.equals(topic.getName()))
+                      .findFirst()
+                      .ifPresent(topic -> topicsTable.getSelectionModel().select(topic));
+        });
 
-	var refreshButton = new Button("Refresh");
-	refreshButton.setMaxWidth(Double.MAX_VALUE);
-	refreshButton.setOnAction(e -> reload());
-	getChildren().addAll(listView, refreshButton);
-    }
+        var tableStack = tableWithEmptyState(topicsTable, controller.getTopics(),
+                                             "No topics found. Click Refresh to load topics from the cluster.");
 
-    public void reload() {
-	adminService.listTopics(topics -> runLater(() -> listView.setItems(observableArrayList(topics))));
-    }
-
-    public void clear() {
-	runLater(() -> listView.getItems().clear());
+        var view = mainView().title("Topics", "Browse, subscribe, or empty topics on the connected cluster.")
+                             .mainWindowHeader()
+                             .message(controller.viewMessage())
+                             .body(tableStack)
+                             .actionBar(actionBar().refresh("Refresh", controller::refreshTopics)
+                                                   .disconnect("Disconnect", controller::disconnect)
+                                                   .build())
+                             .build();
+        getChildren().setAll(view.getChildren());
     }
 
 }

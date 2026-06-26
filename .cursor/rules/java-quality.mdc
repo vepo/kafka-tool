@@ -1,0 +1,149 @@
+---
+description: Java coding standards and quality rules for kafka-tool
+globs: "**/*.java"
+alwaysApply: false
+---
+
+# Java Code Quality — Kafka Tool
+
+## Style and conventions
+
+- Match existing code: tabs for indentation in this project, `var` where type is obvious.
+- Keep classes focused; prefer extending existing abstractions (`AbstractKafkaToolStage`, `KafkaAgnosticConsumer`, **`UI`**) over new parallel patterns.
+- Use SLF4J for logging (`LoggerFactory.getLogger`); no `System.out.println` in production code.
+- Mutable state belongs in services or JavaFX nodes; immutable data carriers belong in `inspect/` and `viewmodels/`.
+- Follow `.cursor/rules/ddd-domain.mdc`: domain nouns from `docs/DOMAIN.md`, no new `*Helper`/`*Util` types, behaviour on the owning object.
+
+### Imports
+
+- Always import types; use the simple class name in code.
+- Fully qualified names are allowed **only** when two types share the same simple name (name collision).
+- Generated code (e.g. Protobuf) is exempt.
+
+```java
+// ❌ BAD
+var topics = java.util.List.of("orders");
+
+// ✅ GOOD
+import java.util.List;
+var topics = List.of("orders");
+
+// ✅ OK — name collision
+import java.util.Date;
+var created = new java.sql.Date(System.currentTimeMillis());
+```
+
+### Static imports
+
+- Static-import constants and static methods whose names read clearly at the call site.
+- Skip static import when the method name is ambiguous without its owning class (e.g. multiple `of`/`get` imports in one file).
+
+```java
+// ❌ BAD
+Platform.runLater(() -> table.getItems().add(row));
+
+// ✅ GOOD
+import static javafx.application.Platform.runLater;
+runLater(() -> table.getItems().add(row));
+
+// ✅ GOOD — meaningful assertion names
+import static org.junit.jupiter.api.Assertions.assertTrue;
+assertTrue(result.valid());
+```
+
+### Immutability and records
+
+- Follow `.cursor/rules/immutability.mdc`: immutable by default, `record` over getter-only POJOs.
+
+### Tell, Don't Ask
+
+- Objects should **do** work; callers should not pull state out only to branch elsewhere.
+- Put validation, transitions, and domain decisions on the type that owns the data (`inspect/`, `settings/`, `consumers/`).
+- Controllers orchestrate UI flow; they should not re-implement domain rules via getter chains.
+
+```java
+// ❌ BAD — ask, then act outside
+if (!broker.isValid()) {
+    showErrors(broker.validationErrors());
+    return;
+}
+connect(broker);
+
+// ✅ GOOD — tell the object to act
+broker.validate()
+    .ifValid(() -> connect(broker))
+    .ifInvalid(this::showErrors);
+```
+
+### String formatting
+
+- Avoid string concatenation with `+` for dynamic messages; use a format template and `.formatted(...)`.
+- For SLF4J logging, use parameterized messages (`log.info("Topic {} failed", topic)`) — not concatenation or `.formatted()`.
+
+```java
+// ❌ BAD
+var message = "Label: " + label;
+throw new IllegalStateException("Failed on topic " + topic + ": " + cause.getMessage());
+
+// ✅ GOOD
+var message = "Label: %s".formatted(label);
+throw new IllegalStateException("Failed on topic %s: %s".formatted(topic, cause.getMessage()));
+
+// ✅ GOOD — logging
+log.warn("Failed on topic {}", topic, cause);
+```
+
+
+```java
+// ❌ BAD — Kafka client in UI stage
+var consumer = new KafkaConsumer<>(props);
+
+// ✅ GOOD — delegate to consumers/ or inspect/
+KafkaAgnosticConsumer.json().start(broker, topic, callback);
+adminService.listTopics(topics -> Platform.runLater(() -> listView.getItems().setAll(topics)));
+```
+
+- `inspect/` and `consumers/` must not import `javafx.*`.
+- UI code must not construct `AdminClient` or `KafkaConsumer` directly.
+- Settings changes go through `Settings.update*` methods only.
+
+## JavaFX thread safety
+
+```java
+// ❌ BAD — UI update from executor/Kafka thread
+messageTable.getItems().add(message);
+
+// ✅ GOOD
+Platform.runLater(() -> messageTable.getItems().add(message));
+```
+
+## Error handling
+
+- Catch specific exceptions; log with context (topic name, broker, operation).
+- Wrap irrecoverable consumer errors in `AgnosticConsumerException`.
+- Do not swallow exceptions silently; at minimum log at ERROR level.
+- Surface user-visible failures with JavaFX `Alert`, not stack traces in UI.
+
+## Kafka API usage
+
+- Use Kafka 4.x APIs: `DescribeTopicsResult.allTopicNames()`, not removed `all()`.
+- Keep Confluent serializer config (`SCHEMA_REGISTRY_URL_CONFIG`) wired from `KafkaBroker`.
+- Blocking poll loops belong on a dedicated executor, never the FX thread.
+
+## Tests
+
+- Follow `.cursor/rules/tdd-gherkin.mdc`: every feature ships with a Gherkin-style scenario using `Feature.feature(...).scenario(...).start()` in try-with-resources.
+- Add unit tests for new logic in `settings/`, `consumers/`, `inspect/`, and extracted domain/UI logic (not raw JavaFX stages).
+- Use JUnit 5; one `@Test` method = one Scenario.
+- Tests must not depend on a running Kafka broker unless tagged `@Tag("integration")`.
+- Clean up `~/.kafka-tool/` in settings tests (see `SettingsTest`).
+
+## Dependencies
+
+- Bump library versions in `pom.xml` `<properties>` only; keep `kafka.version` and `confluent.version` compatible.
+- Do not add dependencies without a clear use in the layer that needs them.
+
+## Before finishing
+
+- Run `mvn verify` and fix compilation/test failures.
+- Avoid deprecated APIs; resolve compiler `-Xlint:deprecation` warnings when touching affected code.

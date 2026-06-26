@@ -1,0 +1,57 @@
+---
+description: Script and automation language conventions for this repo
+alwaysApply: true
+---
+
+# Project Scripts
+
+## Do not use other script runtimes
+
+Do **not** use Python, Node.js, Ruby, or other general-purpose script languages for automation, tooling, or one-off tasks in this repository.
+
+- Do not add `.py`, `package.json`, `requirements.txt`, or similar script-runtime tooling.
+- Do not suggest or run those languages when a script is needed — use JBang instead.
+- If such files appear during a task, replace them with JBang or remove them; do not extend them.
+
+## Use JBang for scripts
+
+When a script or small standalone tool is needed, use **JBang** (single-file Java with `//DEPS` directives).
+
+- Place scripts under `scripts/` (follow existing layout).
+- Start with the shebang: `///usr/bin/env jbang "$0" "$@" ; exit $?`
+- Declare dependencies with `//DEPS`; split reusable code with `//SOURCES` when needed.
+- Prefer picocli for CLI parsing when the script accepts arguments.
+
+Existing example: `scripts/produce-records`.
+
+```java
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//REPOS mavencentral
+//DEPS info.picocli:picocli:4.6.3
+//DEPS org.apache.kafka:kafka-clients:4.3.0
+
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+
+@Command(name = "my-script", mixinStandardHelpOptions = true)
+public class MyScript implements Runnable {
+    public static void main(String[] args) {
+        System.exit(new CommandLine(new MyScript()).execute(args));
+    }
+
+    @Override
+    public void run() {
+        // ...
+    }
+}
+```
+
+Run with `./scripts/my-script` or `jbang scripts/my-script`.
+
+## Bash
+
+**Bash scripts are allowed** — including thin wrappers for local infrastructure (e.g. `./scripts/setup-local-env.sh` for Docker Compose lifecycle).
+
+## Build entry point
+
+**Maven** (`pom.xml`, plugins) remains the build and test entry point — do not duplicate build or test logic in ad-hoc scripts.

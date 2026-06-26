@@ -5,8 +5,38 @@ import java.util.function.BiConsumer;
 
 public interface ResizePolicy {
 
-    static ResizePolicy fixedSize(int size) {
-        return new FixedSizeResizePolicy(size);
+    class DistributeResizePolicy implements ResizePolicy {
+
+        private final int weight;
+
+        public DistributeResizePolicy(int weight) {
+            this.weight = weight;
+        }
+
+        int weight() {
+            return weight;
+        }
+
+    }
+
+    class FitContentResizePolicy implements ResizePolicy {
+
+        private final int minWidth;
+        private final int maxWidth;
+
+        FitContentResizePolicy(int minWidth, int maxWidth) {
+            this.minWidth = minWidth;
+            this.maxWidth = maxWidth;
+        }
+
+        int maxWidth() {
+            return maxWidth;
+        }
+
+        int minWidth() {
+            return minWidth;
+        }
+
     }
 
     class FixedSizeResizePolicy implements ResizePolicy {
@@ -18,29 +48,23 @@ public interface ResizePolicy {
             this.size = size;
             this.penalty = 0;
         }
-        
-        protected void setPenalty(int penalty) {
-            this.penalty = penalty;
-        }
-        
+
         public int getPenalty() {
             return penalty;
         }
 
-    }
-
-    class DistributeResizePolicy implements ResizePolicy {
-
-        private final int weight;
-
-        public DistributeResizePolicy(int weight) {
-            this.weight = weight;
+        int penalty() {
+            return penalty;
         }
 
-    }
+        protected void setPenalty(int penalty) {
+            this.penalty = penalty;
+        }
 
-    static ResizePolicy grow(int weight) {
-        return new DistributeResizePolicy(weight);
+        int size() {
+            return size;
+        }
+
     }
 
     static void apply(List<ResizePolicy> resizePolicies, double totalWidth, BiConsumer<Integer, Double> fn) {
@@ -56,13 +80,24 @@ public interface ResizePolicy {
                                                     .sum();
         for (int i = 0; i < resizePolicies.size(); ++i) {
             var policy = resizePolicies.get(i);
-            if (policy instanceof FixedSizeResizePolicy) {
-                fn.accept(i, (double) ((FixedSizeResizePolicy) policy).size);
-            } else if (policy instanceof DistributeResizePolicy) {
-                fn.accept(i, Math.max(128,
-                                      (((DistributeResizePolicy) policy).weight * distributable) / distibutionFactor));
+            if (policy instanceof FixedSizeResizePolicy fixed) {
+                fn.accept(i, (double) fixed.size);
+            } else if (policy instanceof DistributeResizePolicy distribute) {
+                fn.accept(i, Math.max(128, ((distribute.weight * distributable) / distibutionFactor)));
             }
         }
+    }
+
+    static ResizePolicy fitContent(int minWidth, int maxWidth) {
+        return new FitContentResizePolicy(minWidth, maxWidth);
+    }
+
+    static ResizePolicy fixedSize(int size) {
+        return new FixedSizeResizePolicy(size);
+    }
+
+    static ResizePolicy grow(int weight) {
+        return new DistributeResizePolicy(weight);
     }
 
 }

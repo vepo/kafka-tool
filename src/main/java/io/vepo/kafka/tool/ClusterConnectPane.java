@@ -1,85 +1,101 @@
 package io.vepo.kafka.tool;
 
-import io.vepo.kafka.tool.controls.CentralizedPane;
+import static io.vepo.kafka.tool.controls.builders.UI.grid;
+import static io.vepo.kafka.tool.controls.builders.UI.mainView;
+import static io.vepo.kafka.tool.controls.builders.UI.progressBar;
+import static javafx.collections.FXCollections.observableArrayList;
+
+import java.util.Optional;
+
+import io.vepo.kafka.tool.controllers.ClusterConnectController;
 import io.vepo.kafka.tool.settings.KafkaBroker;
-import io.vepo.kafka.tool.settings.Settings;
-import io.vepo.kafka.tool.stages.BrokerConfigurationStage;
-import javafx.geometry.Insets;
+import javafx.collections.ObservableList;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
-import java.util.Optional;
-import java.util.function.Consumer;
+public class ClusterConnectPane extends VBox {
 
-import static javafx.collections.FXCollections.observableArrayList;
+    private static Stage ownerStage(javafx.scene.Node node) {
+        return node.getScene() != null ? (Stage) node.getScene().getWindow() : null;
+    }
 
-public class ClusterConnectPane extends CentralizedPane {
-
-    public ClusterConnectPane(Consumer<KafkaBroker> connectAction) {
+    public ClusterConnectPane(ClusterConnectController controller) {
         super();
-        setMinSize(512, 256);
-        setPadding(new Insets(25, 25, 25, 25));
+        setFillWidth(true);
+        setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
-        var selectPane = new GridPane();
-        selectPane.setVgap(10);
-        selectPane.setHgap(10);
+        var formBuilder = grid();
+        var form = formBuilder.getGridPane();
+        form.getColumnConstraints().add(new javafx.scene.layout.ColumnConstraints());
 
-        var txtCluster = new Label("Cluster");
-        selectPane.add(txtCluster, 0, 0);
+        var progress = progressBar(8);
+        progress.loadingProperty().bind(controller.busyProperty());
+        formBuilder.addCustom(progress, 3);
 
-        var cmbCluster = new ComboBox<KafkaBroker>();
+        formBuilder.newLine();
+        formBuilder.addText("Cluster");
+        ObservableList<KafkaBroker> clusterItems = observableArrayList();
+        var cmbCluster = formBuilder.addComboBox(clusterItems, 1);
 
-        Runnable updateKafkaOnClustersCombo = () -> {
-            cmbCluster.setItems(observableArrayList(Settings.kafka().getBrokers()));
-            cmbCluster.setDisable(Settings.kafka().getBrokers().isEmpty());
+        Runnable refreshBrokers = () -> {
+            var brokers = controller.getBrokers();
+            cmbCluster.setItems(observableArrayList(brokers));
+            cmbCluster.setDisable(brokers.isEmpty());
+            if (brokers.isEmpty()) {
+                controller.viewMessage().showWarning("No clusters configured. Click Configure brokers to add one.");
+            } else if (cmbCluster.getValue() == null) {
+                cmbCluster.setValue(brokers.get(0));
+            }
         };
-
-        updateKafkaOnClustersCombo.run();
-
+        refreshBrokers.run();
         cmbCluster.setConverter(new StringConverter<KafkaBroker>() {
+            @Override
+            public KafkaBroker fromString(String string) {
+                throw new IllegalStateException("Cannot edit cluster name here");
+            }
 
             @Override
             public String toString(KafkaBroker broker) {
-                return Optional.ofNullable(broker)
-                               .map(KafkaBroker::getName)
-                               .orElse("Select Kafka Cluster...");
-            }
-
-            @Override
-            public KafkaBroker fromString(String string) {
-                throw new IllegalStateException("Cannot edit");
+                return Optional.ofNullable(broker).map(KafkaBroker::getName).orElse("Select Kafka cluster…");
             }
         });
         cmbCluster.setEditable(false);
-        cmbCluster.setMaxWidth(Double.MAX_VALUE);
-        GridPane.setHgrow(cmbCluster, Priority.ALWAYS);
-        GridPane.setFillWidth(cmbCluster, true);
-        selectPane.add(cmbCluster, 1, 0);
 
-        var btnConfigure = new Button("Configure");
+        var btnConfigure = new Button("Configure brokers…");
         btnConfigure.setMaxWidth(Double.MAX_VALUE);
-        GridPane.setFillWidth(btnConfigure, true);
         btnConfigure.setOnAction(e -> {
-            var configStage = new BrokerConfigurationStage((Stage) getScene().getWindow());
-            configStage.showAndWait();
-            updateKafkaOnClustersCombo.run();
+            controller.openBrokerConfiguration(ownerStage(cmbCluster));
+            refreshBrokers.run();
         });
-        selectPane.add(btnConfigure, 2, 0);
+        GridPane.setFillWidth(btnConfigure, true);
+        form.add(btnConfigure, 2, 1);
 
-        var btnConnect = new Button("Connect");
-        btnConnect.setMaxWidth(Double.MAX_VALUE);
-        btnConnect.disableProperty().bind(cmbCluster.itemsProperty().isNull());
-        btnConnect.setOnAction(e -> connectAction.accept(cmbCluster.getValue()));
-        GridPane.setFillWidth(btnConnect, true);
-        GridPane.setColumnSpan(btnConnect, 2);
-        selectPane.add(btnConnect, 1, 1);
+        formBuilder.newLine();
+        formBuilder.skipCell();
+        var btnConnect = formBuilder.addButton("Connect to cluster");
+        btnConnect.disableProperty().bind(cmbCluster.valueProperty().isNull().or(controller.busyProperty()));
+        btnConnect.setOnAction(e -> controller.connect(cmbCluster.getValue(), result -> {}));
 
-        add(selectPane, 512, 256, new Insets(25, 25, 25, 25));
+        var btnTest = new Button("Test connection");
+        btnTest.setMaxWidth(Double.MAX_VALUE);
+        btnTest.disableProperty().bind(cmbCluster.valueProperty().isNull().or(controller.busyProperty()));
+        btnTest.setOnAction(e -> controller.testConnection(cmbCluster.getValue(), result -> {}));
+        GridPane.setFillWidth(btnTest, true);
+        form.add(btnTest, 2, 2);
+
+        VBox.setVgrow(form, Priority.ALWAYS);
+
+        var view = mainView().title("Connect to Kafka",
+                                    "Choose a configured cluster profile. Test the connection before opening the main window.")
+                             .message(controller.viewMessage())
+                             .body(form)
+                             .build();
+        getChildren().setAll(view.getChildren());
     }
 
 }

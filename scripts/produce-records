@@ -31,15 +31,24 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 
-import picocli.CommandLine.Command;
 import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import serializers.JsonSerializer;
 import serializers.ProtobufSerializer;
 
 @Command(name = "produce-records", mixinStandardHelpOptions = true, version = "produce-record 0.1",
-        description = "")
+        description = "Produce JSON, Protobuf, and Avro demo records.")
 public class ProduceRecords implements Callable<Integer> {
+
+    @Option(names = "--bootstrap-servers", defaultValue = "localhost:29092,localhost:29093,localhost:29094",
+            description = "Kafka bootstrap servers.")
+    String bootstrapServers;
+
+    @Option(names = "--schema-registry-url", defaultValue = "http://localhost:8081",
+            description = "Schema Registry URL for Avro records.")
+    String schemaRegistryUrl;
 
     public static void main(String... args) {
         int exitCode = new CommandLine(new ProduceRecords()).execute(args);
@@ -61,7 +70,7 @@ public class ProduceRecords implements Callable<Integer> {
                }));
         try (var jsonProducer = jsonProducer();
              var protobufProducer = protobufProducer();
-             var avroProducer = avroProducer();) {
+             var avroProducer = avroProducer()) {
             Schema.Parser parser = new Schema.Parser();
             Schema schema = parser.parse(User.class.getResourceAsStream("/User.json"));
             var counter = new AtomicInteger(0);
@@ -114,28 +123,28 @@ public class ProduceRecords implements Callable<Integer> {
         return 0;
     }
 
-    private static KafkaProducer<Integer, User> jsonProducer() {
+    private KafkaProducer<Integer, User> jsonProducer() {
         var props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new KafkaProducer<Integer, User>(props);
+        return new KafkaProducer<>(props);
     }
 
-    private static KafkaProducer<Integer, Person> protobufProducer() {
+    private KafkaProducer<Integer, Person> protobufProducer() {
         var props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ProtobufSerializer.class);
-        return new KafkaProducer<Integer, Person>(props);
+        return new KafkaProducer<>(props);
     }
 
-    private static KafkaProducer<Integer, GenericRecord> avroProducer() {
+    private KafkaProducer<Integer, GenericRecord> avroProducer() {
         var props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092");
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
-        props.put("schema.registry.url", "http://localhost:8081");
-        return new KafkaProducer<Integer, GenericRecord>(props);
+        props.put("schema.registry.url", schemaRegistryUrl);
+        return new KafkaProducer<>(props);
     }
 }

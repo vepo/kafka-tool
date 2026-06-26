@@ -1,0 +1,65 @@
+---
+description: Domain-driven design — ubiquitous language, naming, and object virtues
+alwaysApply: true
+---
+
+# Domain-Driven Design — Kafka Tool
+
+## Before any change
+
+1. Read **`docs/DOMAIN.md`** — canonical ubiquitous language and bounded contexts.
+2. Use terms from that document in new types, methods, tests, and user-visible strings.
+3. If the change adds or alters domain vocabulary, update **`docs/DOMAIN.md`** in the same change (set **Last updated**).
+
+## Naming — no helpers or job titles
+
+- **Forbidden for new types:** simple names ending in `Helper`, `Util`, or `Utils`.
+- Prefer **domain nouns** from `docs/DOMAIN.md`: broker profile, topic, record, partition lag, formatted record key, …
+- Avoid **job-title suffixes** (`-er`, `-or`): `Formatter`, `Validator`, `Parser`, `Handler`, `Manager`. Put behaviour on the domain object it belongs to.
+- The `controls/helpers/` package is legacy UI chrome — do not add new `*Helper` classes there; use domain or UI nouns (`ApplicationWindow`, `WindowResize`, …).
+
+```java
+// ❌ BAD — job title, static procedure
+public final class KeyFormatter {
+    public static String format(byte[] key, KeySerializer s) { … }
+}
+
+// ✅ GOOD — domain object encapsulates its value
+public final class RecordKey {
+    private final byte[] bytes;
+    private final KeySerializer serializer;
+    public String displayText() { … }
+}
+```
+
+## Objects, not utility bags
+
+Align with [Seven Virtues of a Good Object](https://www.yegor256.com/2014/11/20/seven-virtues-of-good-object.html):
+
+| Virtue | In this project |
+|--------|-----------------|
+| Represents real domain | Types map to broker profiles, topics, records, consumer groups — not “parsers” or “validators” in isolation |
+| Works by contract | Extract interfaces when mocking or decorating (`inspect/`, `consumers/`, `settings/`) |
+| Unique / encapsulates | Each instance wraps specific data (broker name, key bytes, partition id) |
+| Immutable | Prefer `record` and `final`; no setters on value objects (see `.cursor/rules/immutability.mdc`) |
+| No static domain API | Avoid new `public static` methods on domain types; use instance methods or small factories |
+| Name = what it is | `RecordValue`, not `RecordValueFormatter` |
+| `final` or `abstract` | New concrete domain classes are `final` unless extension is intentional |
+
+## Layer placement
+
+| Kind | Package |
+|------|---------|
+| Broker profiles, persistence, validation | `settings/` |
+| Admin inspection, DTOs, cluster snapshots | `inspect/` |
+| Consume, fetch, key/value display logic | `consumers/` |
+| UI table rows, screen state | `viewmodels/`, controllers orchestrate only |
+
+Tell, don't ask: see `.cursor/rules/java-quality.mdc`. Controllers must not re-implement rules already owned by domain types.
+
+## Checklist before finishing
+
+- [ ] Names match **`docs/DOMAIN.md`**
+- [ ] No new `*Helper` / `*Util` types
+- [ ] Domain doc updated if vocabulary or behaviour changed
+- [ ] Gherkin scenario descriptions use the same language (`.cursor/rules/tdd-gherkin.mdc`)

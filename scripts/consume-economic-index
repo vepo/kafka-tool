@@ -1,0 +1,97 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//REPOS mavencentral
+//DEPS info.picocli:picocli:4.6.3
+//DEPS org.apache.kafka:kafka-clients:4.3.0
+//DEPS com.fasterxml.jackson.core:jackson-databind:2.22.0
+//SOURCES model/EconomicIndex.java
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import model.EconomicIndex;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
+@Command(name = "consume-economic-index", mixinStandardHelpOptions = true,
+        description = "Consume economic index records from a Kafka topic.")
+public class ConsumeEconomicIndex implements Callable<Integer> {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Option(names = "--bootstrap-servers",
+            defaultValue = "localhost:29092,localhost:29093,localhost:29094",
+            description = "Kafka bootstrap servers.")
+    String bootstrapServers;
+
+    @Option(names = "--topic", required = true, description = "Topic to subscribe to.")
+    String topic;
+
+    @Option(names = "--group", required = true, description = "Consumer group id.")
+    String groupId;
+
+    @Option(names = "--instance-id", required = true, description = "Unique consumer instance id.")
+    String instanceId;
+
+    @Option(names = "--raw", description = "Log record values without parsing as EconomicIndex.")
+    boolean raw;
+
+    public static void main(String... args) {
+        System.exit(new CommandLine(new ConsumeEconomicIndex()).execute(args));
+    }
+
+    @Override
+    public Integer call() {
+        var running = new AtomicBoolean(true);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> running.set(false)));
+
+        try (var consumer = consumer()) {
+            consumer.subscribe(java.util.List.of(topic));
+            System.out.printf("Consumer %s joined group %s on topic %s%n", instanceId, groupId, topic);
+            while (running.get()) {
+                var records = consumer.poll(Duration.ofSeconds(1));
+                for (var record : records) {
+                    if (raw) {
+                        System.out.printf("[%s] key=%s value=%s%n", instanceId, record.key(), record.value());
+                        continue;
+                    }
+                    var index = MAPPER.readValue(record.value(), EconomicIndex.class);
+                    System.out.printf("[%s] %s %s (%s): %.2f %s [%s]%n",
+                                      instanceId,
+                                      index.indexCode(),
+                                      index.countryCode(),
+                                      index.period(),
+                                      index.value(),
+                                      index.unit(),
+                                      index.source());
+                }
+            }
+        } catch (Exception e) {
+            System.err.printf("Consumer %s failed: %s%n", instanceId, e.getMessage());
+            e.printStackTrace();
+            return 1;
+        }
+        return 0;
+    }
+
+    private KafkaConsumer<String, String> consumer() {
+        var props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.CLIENT_ID_CONFIG, "%s-%s".formatted(groupId, instanceId));
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        return new KafkaConsumer<>(props);
+    }
+}

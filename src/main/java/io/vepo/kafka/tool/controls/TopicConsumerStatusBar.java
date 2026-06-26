@@ -8,7 +8,7 @@ public class TopicConsumerStatusBar extends HBox {
         IDLE("Idle"),
         CONSUMING("Consuming..."),
         FINISHED("Finished!"),
-        STOPPED("Stopped"), 
+        STOPPED("Stopped"),
         ERROR("Error");
 
         private String text;
@@ -29,12 +29,12 @@ public class TopicConsumerStatusBar extends HBox {
         this.getChildren().add(txtCurrenOffset);
     }
 
-    public void status(Status status) {
-        txtStatus.setText(status.text);
-    }
-
     public void offset(long offset) {
         txtCurrenOffset.setText(Long.toString(offset));
+    }
+
+    public void status(Status status) {
+        txtStatus.setText(status.text);
     }
 
 }

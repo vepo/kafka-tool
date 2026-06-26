@@ -5,8 +5,8 @@ import java.util.Optional;
 
 import io.vepo.kafka.tool.controls.WindowHead;
 import io.vepo.kafka.tool.controls.helpers.ResizeHelper;
-import io.vepo.kafka.tool.settings.Settings;
 import io.vepo.kafka.tool.settings.WindowSettings;
+import io.vepo.kafka.tool.settings.service.SettingsService;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
@@ -15,28 +15,6 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 public class AbstractKafkaToolStage extends Stage {
-
-    protected AbstractKafkaToolStage(String id, Stage owner, boolean modal, WindowSettings defaultSettings) {
-        // Set position of second window, related to primary window.
-        if (modal) {
-            initModality(Modality.WINDOW_MODAL);
-            initOwner(owner);
-        }
-
-        setX(owner.getX() + 200);
-        setY(owner.getY() + 100);
-        var settings = Settings.ui().getDialogs().getOrDefault(id, defaultSettings);
-        setWidth(settings.getWidth());
-        setHeight(settings.getHeight());
-        setMinWidth(defaultSettings.getWidth());
-        setMinHeight(defaultSettings.getHeight());
-        widthProperty().addListener((obs, oldValue, newValue) -> Settings.updateUi(
-                ui -> ui.getDialogs().computeIfAbsent(id, key -> defaultSettings).setWidth(newValue.intValue())));
-        heightProperty().addListener((obs, oldValue, newValue) -> Settings.updateUi(
-                ui -> ui.getDialogs().computeIfAbsent(id, key -> defaultSettings).setHeight(newValue.intValue())));
-        setup(this);
-
-    }
 
     private static Optional<WindowHead> findHead(Scene maybeScene) {
         return Optional.ofNullable(maybeScene).map(scene -> scene.getRoot()).map(parent -> findHeadOnChildren(parent));
@@ -47,7 +25,7 @@ public class AbstractKafkaToolStage extends Stage {
             return (WindowHead) parent;
         } else {
             return parent.getChildrenUnmodifiable().stream().filter(node -> node instanceof Parent)
-                    .map(node -> findHeadOnChildren((Parent) node)).filter(Objects::nonNull).findFirst().orElse(null);
+                         .map(node -> findHeadOnChildren((Parent) node)).filter(Objects::nonNull).findFirst().orElse(null);
         }
     }
 
@@ -61,6 +39,29 @@ public class AbstractKafkaToolStage extends Stage {
         ResizeHelper.addResizeListener(stage);
 
         stage.titleProperty().addListener((observable, oldTitle, newTitle) -> findHead(stage.getScene())
-                .ifPresent(head -> head.setTitle(newTitle)));
+                                                                                                        .ifPresent(head -> head.setTitle(newTitle)));
+    }
+
+    protected AbstractKafkaToolStage(String id, Stage owner, boolean modal, WindowSettings defaultSettings,
+                                     SettingsService settingsService) {
+        if (modal) {
+            initModality(Modality.WINDOW_MODAL);
+            initOwner(owner);
+        }
+
+        setX(owner.getX() + 200);
+        setY(owner.getY() + 100);
+        var settings = settingsService.ui().getDialogs().getOrDefault(id, defaultSettings);
+        setWidth(settings.getWidth());
+        setHeight(settings.getHeight());
+        setMinWidth(defaultSettings.getWidth());
+        setMinHeight(defaultSettings.getHeight());
+        widthProperty().addListener((obs, oldValue, newValue) -> settingsService.updateUi(
+                                                                                          ui -> ui.getDialogs().computeIfAbsent(id, key -> defaultSettings)
+                                                                                                  .setWidth(newValue.intValue())));
+        heightProperty().addListener((obs, oldValue, newValue) -> settingsService.updateUi(
+                                                                                           ui -> ui.getDialogs().computeIfAbsent(id, key -> defaultSettings)
+                                                                                                   .setHeight(newValue.intValue())));
+        setup(this);
     }
 }

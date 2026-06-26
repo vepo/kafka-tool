@@ -11,12 +11,13 @@ public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
         this.brokers = new ArrayList<>();
     }
 
-    public List<KafkaBroker> getBrokers() {
-        return brokers;
-    }
-
-    public void setBrokers(List<KafkaBroker> brokers) {
-        this.brokers = brokers;
+    @Override
+    public KafkaSettings clone() {
+        try {
+            return (KafkaSettings) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -29,22 +30,21 @@ public class KafkaSettings implements Settings<KafkaSettings>, Cloneable {
         return Objects.equals(brokers, that.brokers);
     }
 
+    public List<KafkaBroker> getBrokers() {
+        return brokers;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(brokers);
     }
 
-    @Override
-    public String toString() {
-        return String.format("KafkaSettings [brokers=%s]", brokers);
+    public void setBrokers(List<KafkaBroker> brokers) {
+        this.brokers = brokers;
     }
 
     @Override
-    public KafkaSettings clone() {
-        try {
-            return (KafkaSettings) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
-        }
+    public String toString() {
+        return String.format("KafkaSettings [brokers=%s]", brokers);
     }
 }

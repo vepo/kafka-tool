@@ -1,0 +1,44 @@
+---
+description: Keep architecture documentation in sync with structural code changes
+alwaysApply: true
+---
+
+# Architecture Documentation Maintenance
+
+The canonical domain reference is **`docs/DOMAIN.md`**. The canonical architecture reference is **`docs/ARCHITECTURE.md`**. Agent onboarding context lives in **`AGENTS.md`**.
+
+Agents must read **`docs/DOMAIN.md`** before any change (see `.cursor/rules/ddd-domain.mdc`).
+
+## When you MUST update docs
+
+Update `docs/DOMAIN.md` in the **same change** when you add, rename, or change the meaning of domain terms.
+
+Update `docs/ARCHITECTURE.md` (and `AGENTS.md` if agent workflow changes) in the **same change** when you:
+
+1. Add, remove, or rename a package or primary class
+2. Change a data flow (new Kafka operation, new screen, new persistence file)
+3. Move responsibilities between layers (e.g. Kafka logic into a stage)
+4. Change threading model, config path, or connection lifecycle
+5. Add/remove external dependencies or change integration points
+6. Fix or introduce a documented architectural caveat
+
+## When you may skip doc updates
+
+- Bug fixes that preserve behavior and structure
+- Formatting, renames of private methods, test-only changes
+- Dependency patch bumps with no API or flow impact
+
+## How to update
+
+1. Edit the relevant section in `docs/DOMAIN.md` or `docs/ARCHITECTURE.md` (terms, data flows, package table, diagram, caveats).
+2. Set **Last updated** to today's date on each file you touch.
+3. If package layout or commands in `AGENTS.md` are stale, update those sections too.
+4. Mention the doc update in your commit/PR summary when the change is structural.
+
+## Checklist before completing structural work
+
+- [ ] Layer boundaries still respected?
+- [ ] `docs/DOMAIN.md` reflects new/changed terms?
+- [ ] `docs/ARCHITECTURE.md` reflects new/changed flows?
+- [ ] Mermaid diagram or tables updated if classes/relationships changed?
+- [ ] Known gaps/caveats section updated if behavior changed?

@@ -12,20 +12,18 @@ public final class TopicInfo {
         this.internal = internal;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public boolean isInternal() {
-        return internal;
-    }
-
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         TopicInfo topicInfo = (TopicInfo) o;
         return internal == topicInfo.internal && Objects.equals(name, topicInfo.name);
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
@@ -33,11 +31,15 @@ public final class TopicInfo {
         return Objects.hash(name, internal);
     }
 
+    public boolean isInternal() {
+        return internal;
+    }
+
     @Override
     public String toString() {
         return new StringJoiner(", ", TopicInfo.class.getSimpleName() + "[", "]")
-                .add("name='" + name + "'")
-                .add("internal=" + internal)
-                .toString();
+                                                                                 .add("name='" + name + "'")
+                                                                                 .add("internal=" + internal)
+                                                                                 .toString();
     }
 }

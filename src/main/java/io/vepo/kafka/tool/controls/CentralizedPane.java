@@ -12,14 +12,30 @@ public class CentralizedPane extends Pane {
     private static final Object HEIGHT = "HEIGHT";
     private static final Object MARGIN = "MARGIN";
 
-    public CentralizedPane() {
-    }
+    public CentralizedPane() {}
 
     public void add(Node node, double width, double height, Insets margins) {
         node.getProperties().put(WIDTH, width);
         node.getProperties().put(HEIGHT, height);
         node.getProperties().put(MARGIN, margins);
         getChildren().add(node);
+    }
+
+    @Override
+    protected double computeMinHeight(double width) {
+        return super.computeMinHeight(width) + getChildren().stream()
+                                                            .filter(node -> node.getProperties().containsKey(HEIGHT))
+                                                            .mapToDouble(this::totalHeight)
+                                                            .sum();
+    }
+
+    @Override
+    protected double computeMinWidth(double height) {
+        return super.computeMinWidth(height) + getChildren().stream()
+                                                            .filter(node -> node.getProperties().containsKey(HEIGHT))
+                                                            .mapToDouble(this::totalWidth)
+                                                            .max()
+                                                            .orElse(0.0);
     }
 
     @Override
@@ -62,22 +78,5 @@ public class CentralizedPane extends Pane {
         return (double) node.getProperties().get(WIDTH) +
                 ((Insets) node.getProperties().get(MARGIN)).getLeft() +
                 ((Insets) node.getProperties().get(MARGIN)).getRight();
-    }
-
-    @Override
-    protected double computeMinWidth(double height) {
-        return super.computeMinWidth(height) + getChildren().stream()
-                                                            .filter(node -> node.getProperties().containsKey(HEIGHT))
-                                                            .mapToDouble(this::totalWidth)
-                                                            .max()
-                                                            .orElse(0.0);
-    }
-
-    @Override
-    protected double computeMinHeight(double width) {
-        return super.computeMinHeight(width) + getChildren().stream()
-                                                            .filter(node -> node.getProperties().containsKey(HEIGHT))
-                                                            .mapToDouble(this::totalHeight)
-                                                            .sum();
     }
 }
